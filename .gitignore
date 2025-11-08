@@ -209,3 +209,4 @@ __marimo__/
 # RSA Keys - should be project-specific and not in version control
 keys/private_key.pem
 keys/public_key.pem
+manifests/secret.yaml
