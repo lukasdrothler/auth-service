@@ -1,7 +1,7 @@
 fastapi==0.121.0
 python-jose[cryptography]==3.5.0
 passlib==1.7.4
-bcrypt==5.0.0
+bcrypt==4.0.1
 python-multipart==0.0.20
 mysql-connector-python==9.5.0
 pydantic==2.12.4
