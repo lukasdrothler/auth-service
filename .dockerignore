@@ -1,0 +1,40 @@
+# Don't copy keys into the Docker image
+keys/
+*.pem
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+
+# Environment files
+.env
+.venv
+venv/
+ENV/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+README.md
+*.md
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Other
+.DS_Store
