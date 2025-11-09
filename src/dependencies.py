@@ -1,9 +1,10 @@
 """
 Dependency injection container for FastAPI Utils
 """
-from typing import Annotated, Any, Dict, Callable
+from typing import Annotated, Any, Dict, Callable, Optional
+import os
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Header, status
 from fastapi.security import OAuth2PasswordBearer
 
 from .models import UserInDB
@@ -149,7 +150,28 @@ def get_current_admin_user(
     return auth_service.get_current_admin_user(current_user)
 
 
+# Internal service authentication
+def verify_internal_api_key(x_api_key: Optional[str] = Header(None)) -> bool:
+    """
+    Dependency to verify internal service API key.
+    Returns True if the API key is valid, False otherwise.
+    Set INTERNAL_API_KEY environment variable to enable this feature.
+    """
+    internal_api_key = os.getenv("INTERNAL_API_KEY")
+    
+    # If no internal API key is configured, return False (external request)
+    if not internal_api_key:
+        return False
+    
+    # Check if the provided API key matches
+    if x_api_key and x_api_key == internal_api_key:
+        return True
+    
+    return False
+
+
 # Convenience type annotations for use in route handlers
 CurrentUser = Annotated[UserInDB, Depends(get_current_user)]
 CurrentActiveUser = Annotated[UserInDB, Depends(get_current_active_user)]
 CurrentAdminUser = Annotated[UserInDB, Depends(get_current_admin_user)]
+IsInternalRequest = Annotated[bool, Depends(verify_internal_api_key)]
