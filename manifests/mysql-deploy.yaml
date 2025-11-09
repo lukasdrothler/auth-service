@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: auth-mysql
   labels:
     app: auth-mysql
 
 spec:
+  serviceName: mysql-service
   replicas: 1
   selector:
     matchLabels:
@@ -31,12 +32,19 @@ spec:
                 secretKeyRef:
                   name: auth-secret
                   key: DB_PASSWORD
+            - name: MYSQL_ROOT_HOST
+              value: "%"
           volumeMounts:
             - name: mysql-storage
               mountPath: /var/lib/mysql
-      volumes:
-        - name: mysql-storage
-          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
 ---
 apiVersion: v1
 kind: Service
@@ -45,10 +53,10 @@ metadata:
   labels:
     app: auth-mysql
 spec:
+  clusterIP: None
   selector:
     app: auth-mysql
   ports:
     - protocol: TCP
       port: 3306
       targetPort: 3306
-  type: ClusterIP
