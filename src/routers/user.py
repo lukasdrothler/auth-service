@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from src.dependencies import *
 from src.models import *
 from src.user_queries import *
+from src.email_verification import *
 
 router = APIRouter()
 
@@ -20,15 +21,15 @@ async def create_new_user(
     return auth_service.register_new_user(user=user,db_service=db_service)
 
 
-# @router.post("/user/verify-email", status_code=200, tags=["user-registration"])
-# async def verify_user_email(
-#     verify_request: VerifyEmailRequest,
-#     db_service: DatabaseService = Depends(get_database_service),
-# ):
-#     return verify_user_email_with_code(
-#         verify_request=verify_request,
-#         db_service=db_service, 
-#         )
+@router.post("/user/verify-email", status_code=200, tags=["user-registration"])
+async def verify_user_email(
+    verify_request: VerifyEmailRequest,
+    db_service: DatabaseService = Depends(get_database_service),
+):
+    return verify_user_email_with_code(
+        verify_request=verify_request,
+        db_service=db_service, 
+        )
     
 
 # @router.post("/user/resend-verification", status_code=200, tags=["user-registration"])
@@ -86,18 +87,18 @@ async def change_user_password(
 #         )
 
 
-# @router.post("/user/me/email/verify", status_code=200, tags=["user-information"])
-# async def user_email_change_verification(
-#     verify_request: VerifyEmailRequest,
-#     current_user: CurrentActiveUser,
-#     db_service: DatabaseService = Depends(get_database_service),
-# ):
-#     """Verify email change with 6-digit code and update user's email"""
-#     return verify_user_email_change(
-#         user=current_user,
-#         verify_request=verify_request,
-#         db_service=db_service,
-#         )
+@router.post("/user/me/email/verify", status_code=200, tags=["user-information"])
+async def user_email_change_verification(
+    verify_request: VerifyEmailRequest,
+    current_user: CurrentActiveUser,
+    db_service: DatabaseService = Depends(get_database_service),
+):
+    """Verify email change with 6-digit code and update user's email"""
+    return verify_user_email_change(
+        user=current_user,
+        verify_request=verify_request,
+        db_service=db_service,
+        )
 
 
 # @router.post("/user/forgot-password/request", status_code=200, tags=["user-password-recovery"])
@@ -111,30 +112,30 @@ async def change_user_password(
 #         )
 
 
-# @router.post("/user/forgot-password/verify", status_code=200, tags=["user-password-recovery"])
-# async def forgot_password_verification(
-#     verify_request: VerifyEmailRequest,
-#     db_service: DatabaseService = Depends(get_database_service),
-# ):
-#     """Verify email change with 6-digit code and update user's email"""
-#     return verify_forgot_password_with_code(
-#         verify_request=verify_request,
-#         db_service=db_service,
-#         )
+@router.post("/user/forgot-password/verify", status_code=200, tags=["user-password-recovery"])
+async def forgot_password_verification(
+    verify_request: VerifyEmailRequest,
+    db_service: DatabaseService = Depends(get_database_service),
+):
+    """Verify email change with 6-digit code and update user's email"""
+    return verify_forgot_password_with_code(
+        verify_request=verify_request,
+        db_service=db_service,
+        )
 
 
-# @router.post("/user/forgot-password/change", status_code=200, tags=["user-password-recovery"])
-# async def change_forgotten_password(
-#     update_forgotten_password: UpdateForgottenPassword,
-#     auth_service: AuthService = Depends(get_auth_service),
-#     db_service: DatabaseService = Depends(get_database_service),
-# ):
-#     """Verify email change with 6-digit code and update user's email"""
-#     return update_forgotten_password_with_code(
-#         update_forgotten_password=update_forgotten_password,
-#         auth_service=auth_service,
-#         db_service=db_service,
-#         )
+@router.post("/user/forgot-password/change", status_code=200, tags=["user-password-recovery"])
+async def change_forgotten_password(
+    update_forgotten_password: UpdateForgottenPassword,
+    auth_service: AuthService = Depends(get_auth_service),
+    db_service: DatabaseService = Depends(get_database_service),
+):
+    """Verify email change with 6-digit code and update user's email"""
+    return update_forgotten_password_with_code(
+        update_forgotten_password=update_forgotten_password,
+        auth_service=auth_service,
+        db_service=db_service,
+        )
 
 
 @router.post("/user/id-to-name-map", response_model=dict, tags=["user-information"])
