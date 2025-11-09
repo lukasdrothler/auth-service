@@ -1,94 +1,111 @@
-# auth-service
+# Auth Service
 
-A FastAPI-based authentication service with JWT token support and RSA key pair encryption.
+A FastAPI microservice for user authentication and management with JWT token-based authentication, email verification, and password recovery.
 
 ## Features
 
-- User registration and authentication
-- JWT access and refresh tokens with RSA encryption
-- Email verification system
-- Password management
-- User profile management
-- Admin functionality
-- Project-specific RSA key pairs (external to Docker image)
+- **JWT Authentication**: RS256 asymmetric token signing with access and refresh tokens
+- **User Registration**: Account creation with email verification codes
+- **Email Verification**: 6-digit verification codes for new accounts and email changes
+- **Password Management**: Password changes and forgot password recovery flow
+- **User Management**: Profile updates and admin user management endpoints
+- **CORS Support**: Configurable cross-origin resource sharing
+- **MySQL Database**: Persistent storage for users and verification codes
 
-## RSA Keys Configuration
+## Prerequisites
 
-This service uses RSA key pairs for JWT token signing. Keys are stored **outside** the Docker image to allow each deployment/project to have its own unique key pair.
+- Python 3.14+
+- MySQL database
+- RSA key pair (private and public keys)
 
-### Default Behavior
+## Setup
 
-- Keys are stored in a `keys/` directory at the project root (same level as `src/`)
-- If keys don't exist, they are automatically generated on first run
-- Keys are git-ignored and not included in version control
-
-### Custom Keys Location
-
-You can override the default keys directory using the `RSA_KEYS_DIR` environment variable:
-
+1. **Clone and install dependencies**:
 ```bash
-export RSA_KEYS_DIR=/path/to/your/keys
-```
-
-Or in docker-compose:
-```yaml
-environment:
-  - RSA_KEYS_DIR=/custom/path/keys
-```
-
-## Running with Docker Compose
-
-The `docker-compose.yml` file includes a volume mount for the keys directory:
-
-```bash
-docker-compose up -d
-```
-
-This will:
-1. Build the Docker image
-2. Mount `./keys` from your host to `/app/keys` in the container
-3. Generate keys on first run if they don't exist
-4. Persist keys across container restarts
-
-## Multiple Projects
-
-To use this service for multiple projects with separate key pairs:
-
-1. Clone or deploy the service to different directories/environments
-2. Each deployment will have its own `keys/` directory
-3. Keys remain external to the Docker image, ensuring isolation
-
-Example structure:
-```
-/projects/
-  ├── project-a/
-  │   ├── auth-service/
-  │   │   ├── keys/          # Project A's keys
-  │   │   ├── src/
-  │   │   └── docker-compose.yml
-  │
-  └── project-b/
-      └── auth-service/
-          ├── keys/          # Project B's keys
-          ├── src/
-          └── docker-compose.yml
-```
-
-## Environment Variables
-
-- `FASTAPI_HOST` - Host to bind to (default: 0.0.0.0)
-- `FASTAPI_PORT` - Port to bind to (default: 8000)
-- `CURRENT_ENV` - Set to "development" for debug mode
-- `RSA_KEYS_DIR` - Custom path for RSA keys (optional)
-
-## Development
-
-```bash
-# Install dependencies
 pip install -r requirements.txt
+```
 
-# Run locally
+2. **Generate RSA keys**:
+```bash
+mkdir keys
+# Generate private key
+openssl genrsa -out keys/private_key.pem 2048
+# Generate public key
+openssl rsa -in keys/private_key.pem -pubout -out keys/public_key.pem
+```
+
+3. **Configure environment variables** (`.env` file):
+```env
+# Environment
+CURRENT_ENV=development  # or production
+
+# Server
+AUTH_SVC_HOST=0.0.0.0
+AUTH_SVC_PORT=8000
+
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=your_user
+DB_PASSWORD=your_password
+DB_NAME=auth_db
+```
+
+4. **Database setup**:
+Create the required MySQL database and tables. The service expects `users` and `verification_codes` tables (schema based on models in `src/models.py`).
+
+5. **Run the service**:
+```bash
 python main.py
 ```
 
-Keys will be automatically generated in `./keys/` on first run.
+## API Endpoints
+
+### Authentication
+- `POST /token` - Login with username/email and password (OAuth2 compatible)
+- `POST /token/refresh` - Refresh access token using refresh token
+
+### User Registration
+- `POST /user/register` - Create new user account (returns verification code)
+- `POST /user/verify-email` - Verify email with 6-digit code
+
+### User Information
+- `GET /user/me` - Get current user info
+- `PUT /user/me` - Update user profile
+- `PUT /user/me/password` - Change password
+- `POST /user/me/email/verify` - Verify email change
+- `POST /user/id-to-name-map` - Map user IDs to usernames
+
+### Password Recovery
+- `POST /user/forgot-password/verify` - Verify forgot password code
+- `POST /user/forgot-password/change` - Reset password with verification code
+
+### Admin Endpoints (requires admin role)
+- `GET /user/all` - List all users
+- `DELETE /user/{user_id}` - Delete user by ID
+
+## Docker Deployment
+
+Build and run with Docker:
+```bash
+docker build -t auth-service .
+docker run -p 8000:8000 --env-file .env auth-service
+```
+
+Or use Kubernetes manifests in `manifests/`:
+```bash
+kubectl apply -f manifests/
+```
+
+## Development
+
+- **Development mode**: Set `CURRENT_ENV=development` to enable hot reload and API docs at `/docs` and `/redoc`
+- **Production mode**: Docs disabled, warning-level logging only
+
+## Architecture
+
+- **FastAPI**: Web framework with automatic OpenAPI documentation
+- **JWT RS256**: Asymmetric token signing for security
+- **Dependency Injection**: Clean separation of services (auth, database)
+- **Pydantic Models**: Type-safe request/response validation
+- **MySQL**: Relational database for user data persistence
