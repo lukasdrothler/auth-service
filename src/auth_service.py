@@ -142,6 +142,7 @@ class AuthService:
                 db_service=db_service
                 )
             if not user:
+                logger.error(f"Could not find user with username or email '{username_or_email}'")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Incorrect username or password",
@@ -155,6 +156,7 @@ class AuthService:
             )
 
         if not self.verify_password(password, user.hashed_password):
+            logger.error(f"Invalid password for user '{username_or_email}'")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -230,12 +232,14 @@ class AuthService:
             payload = jwt.decode(token, self.public_key, algorithms=[self.algorithm])
             user_id = payload.get("sub")
             if user_id is None:
+                logger.error("User ID not found in token payload")
                 raise credentials_exception
         except jwt.InvalidTokenError:
             raise credentials_exception
             
         user = user_queries.get_user_by_id(user_id, db_service=db_service)
         if user is None:
+            logger.error(f"User with ID '{user_id}' not found")
             raise credentials_exception
         return user
 
