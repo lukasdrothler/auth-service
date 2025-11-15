@@ -3,7 +3,6 @@ kind: ConfigMap
 metadata:
   name: auth-configmap
 data:
-  CURRENT_ENV: development
   DB_HOST: mysql-service
   DB_NAME: auth
   DB_PORT: "3306"
