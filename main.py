@@ -66,4 +66,4 @@ app.include_router(stripe.router)
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host=os.getenv("AUTH_SVC_HOST", "0.0.0.0"), port=int(os.getenv("AUTH_SVC_PORT", 8000)), reload=hot_reload)
+    uvicorn.run("main:app", host=os.getenv("AUTH_SVC_HOST", "0.0.0.0"), port=int(os.getenv("AUTH_SVC_PORT", 8007)))

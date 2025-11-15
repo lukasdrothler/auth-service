@@ -23,7 +23,7 @@ spec:
         - name: auth-service
           image: ghcr.io/lukasdrothler/auth-service:latest
           ports:
-            - containerPort: 8000
+            - containerPort: 8007
           envFrom:
             - configMapRef:
                 name: auth-configmap
@@ -65,6 +65,6 @@ spec:
   type: NodePort
   ports:
     - protocol: TCP
-      port: 8000
-      targetPort: 8000
+      port: 8007
+      targetPort: 8007
       nodePort: 30800

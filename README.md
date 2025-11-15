@@ -42,7 +42,7 @@ CURRENT_ENV=development  # or production
 
 # Server
 AUTH_SVC_HOST=0.0.0.0
-AUTH_SVC_PORT=8000
+AUTH_SVC_PORT=8007
 
 # Database
 DB_HOST=localhost
@@ -116,7 +116,7 @@ python main.py
 Build and run with Docker:
 ```bash
 docker build -t auth-service .
-docker run -p 8000:8000 --env-file .env auth-service
+docker run -p 8007:8007 --env-file .env auth-service
 ```
 
 Or use Kubernetes manifests in `manifests/`:
