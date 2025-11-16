@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.dependencies import *
+from src.dependencies import setup_dependencies
 import src.routers.token as token
 import src.routers.user as user
 import src.routers.stripe as stripe

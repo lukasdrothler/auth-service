@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.dependencies import *
-from src.models import *
-from src.user_queries import *
-from src.email_verification import *
+from src.dependencies import get_auth_service, get_database_service, CurrentActiveUser, CurrentAdminUser, IsInternalRequest
+from src.models import User, CreateUser, UpdateUser, UpdatePassword, VerifyEmailRequest, CreateVerificationCodeResponse, UpdateForgottenPassword, UserInDBNoPassword
+from src.user_queries import get_all_users, delete_user
+from src.email_verification import verify_user_email_with_code, verify_user_email_change, verify_forgot_password_with_code, update_forgotten_password_with_code
+from src.auth_service import AuthService
+from src.database_service import DatabaseService
 
 from src import verification_code_queries
 from src import user_queries
@@ -196,7 +198,7 @@ def get_user_ids_to_name(
     db_service: DatabaseService = Depends(get_database_service),
 ):
     """Get user names by their IDs"""
-    return get_user_ids_to_names(
+    return user_queries.get_user_ids_to_names(
         user_ids=user_ids,
         db_service=db_service,
     )

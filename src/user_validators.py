@@ -2,13 +2,13 @@
 Authentication validation utilities
 """
 from typing import Optional
-from .models import CreateUser, UpdateUser, UpdatePassword
-from .database_service import DatabaseService
-
 from fastapi import HTTPException, status
-import re
 
-from . import user_queries
+from src.models import CreateUser, UpdateUser, UpdatePassword
+from src.database_service import DatabaseService
+from src import user_queries
+
+import re
 
 
 def validate_username_format(username: str) -> None:

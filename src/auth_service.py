@@ -1,12 +1,13 @@
 
-from .models import CreateVerificationCodeResponse, UserInDB, CreateUser, UpdateUser, UpdatePassword, Token
-from .database_service import DatabaseService
+from src.models import CreateVerificationCodeResponse, UserInDB, CreateUser, UpdateUser, UpdatePassword, Token, TokenData
+from src.database_service import DatabaseService
 
-from . import user_queries, verification_code_queries, user_validators
+from src import user_queries, verification_code_queries, user_validators
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from passlib.context import CryptContext
+from jwt.exceptions import InvalidTokenError
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from cryptography.hazmat.primitives import serialization
@@ -191,6 +192,39 @@ class AuthService:
                 is_refresh=True)
             return Token(access_token=access_token, refresh_token=refresh_token)
         
+        return Token(access_token=access_token)
+    
+
+    def refresh_access_token(
+            self,
+            refresh_token: str,
+            db_service: DatabaseService
+            ) -> Token:
+        """Refresh an access token using a refresh token"""
+        credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+        try:
+            payload = jwt.decode(refresh_token, self.public_key, algorithms=[self.algorithm])
+            user_id = payload.get("sub")
+            if user_id is None:
+                raise credentials_exception
+            token_data = TokenData(user_id=user_id)
+        except InvalidTokenError:
+            raise credentials_exception
+        
+        # Get and validate current user
+        user = user_queries.get_user_by_id(token_data.user_id, db_service=db_service)
+        if user is None or user.disabled:
+            raise credentials_exception
+        
+        access_token = self.create_bearer_token(
+            user=user,
+            db_service=db_service
+            )
         return Token(access_token=access_token)
 
 

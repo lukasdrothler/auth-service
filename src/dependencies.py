@@ -2,15 +2,15 @@
 Dependency injection container for FastAPI Utils
 """
 from typing import Annotated, Any, Dict, Callable, Optional
-import os
-
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 
-from .models import UserInDB
-from .database_service import DatabaseService
-from .auth_service import AuthService
-from .stripe_service import StripeService
+from src.models import UserInDB
+from src.database_service import DatabaseService
+from src.auth_service import AuthService
+from src.stripe_service import StripeService
+
+import os
 
 
 class DependencyContainer:

@@ -1,10 +1,11 @@
-import logging
-from fastapi import HTTPException, status
-from .models import UserInDBNoPassword, UserInDB, UpdateUser
-from .database_service import DatabaseService
-
 from datetime import datetime, timezone
 from typing import Optional
+from fastapi import HTTPException, status
+
+from src.models import UserInDBNoPassword, UserInDB, UpdateUser
+from src.database_service import DatabaseService
+
+import logging
 
 logger = logging.getLogger(__name__)
 

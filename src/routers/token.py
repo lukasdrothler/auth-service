@@ -1,13 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
-from jwt.exceptions import InvalidTokenError
 
-import jwt
 
-from src.dependencies import *
-from src.models import *
-from src.user_queries import *
+from src.dependencies import get_auth_service, get_database_service
+from src.auth_service import AuthService
+from src.database_service import DatabaseService
+from src.models import Token, RefreshTokenRequest
 
 router = APIRouter()
 
@@ -32,29 +31,7 @@ def refresh_access_token(
     auth_service: AuthService = Depends(get_auth_service),
     db_service: DatabaseService = Depends(get_database_service),
 ) -> Token:
-    
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    try:
-        payload = jwt.decode(refresh_request.refresh_token, auth_service.public_key, algorithms=[auth_service.algorithm])
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-        token_data = TokenData(user_id=user_id)
-    except InvalidTokenError:
-        raise credentials_exception
-    
-    # Get and validate current user
-    user = get_user_by_id(token_data.user_id, db_service=db_service)
-    if user is None or user.disabled:
-        raise credentials_exception
-    
-    access_token = auth_service.create_bearer_token(
-        user=user,
+    return auth_service.refresh_access_token(
+        refresh_token=refresh_request.refresh_token,
         db_service=db_service
-        )
-    return Token(access_token=access_token)
+    )

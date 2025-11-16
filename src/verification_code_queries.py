@@ -2,15 +2,16 @@
 Verification database queries
 """
 from fastapi import HTTPException, status
-
-from .models import UserInDB, VerificationCode
-from .database_service import DatabaseService
-
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+
+from src.models import UserInDB, VerificationCode
+from src.database_service import DatabaseService
+from src import user_queries
+
 import random
 import os
-from . import user_queries
+
 
 
 def generate_verification_code() -> str:

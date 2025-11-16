@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Request, Header
 
-from ..database_service import DatabaseService
-from ..stripe_service import StripeService
-from ..dependencies import CurrentActiveUser, get_database_service, get_stripe_service
+from src.database_service import DatabaseService
+from src.stripe_service import StripeService
+from src.dependencies import CurrentActiveUser, get_database_service, get_stripe_service
 
 import logging
 

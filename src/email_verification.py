@@ -4,13 +4,10 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException, status
 
-from .auth_service import AuthService
-from .models import UpdateForgottenPassword, UserInDB, VerifyEmailRequest
-from .database_service import DatabaseService
-from . import user_queries, verification_code_queries, user_validators
-
-from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException, status
+from src.auth_service import AuthService
+from src.models import UpdateForgottenPassword, UserInDB, VerifyEmailRequest
+from src.database_service import DatabaseService
+from src import user_queries, verification_code_queries, user_validators
 
 def _check_verification_code(user: Optional[UserInDB], code: str, db_service: DatabaseService) -> UserInDB:
     """Check if verification code is valid, not used and not expired"""
