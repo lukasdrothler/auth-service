@@ -119,11 +119,6 @@ docker build -t auth-service .
 docker run -p 8007:8007 --env-file .env auth-service
 ```
 
-Or use Kubernetes manifests in `manifests/`:
-```bash
-kubectl apply -f manifests/
-```
-
 ## Internal vs External Usage
 
 This service supports both internal (service-to-service) and external (public-facing) deployments:
