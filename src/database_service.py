@@ -41,11 +41,18 @@ class DatabaseService:
             self.password = ""
             logger.warning("Using empty database password since 'DB_PASSWORD' not set")
 
+        if "DB_NAME" in os.environ:
+            self.database = os.environ["DB_NAME"]
+            logger.info(f"Using database name '{self.database}' from environment variable 'DB_NAME'")
+        else:
+            self.database = "auth"
+            logger.warning(f"Using database name '{self.database}' since 'DB_NAME' not set")
+
         logger.info("DatabaseService initialized. Trying to connect to database...")
         if not self.db_connection_works():
-            logger.info("Database 'auth' does not exist. Creating and initializing...")
+            logger.info(f"Database '{self.database}' does not exist. Creating and initializing...")
             self.execute_init_db_sql()
-            logger.info("Database 'auth' created and schema initialized successfully.")
+            logger.info(f"Database '{self.database}' created and schema initialized successfully.")
 
         if not self.db_tables_exist():
             logger.info("Database tables do not exist. Initializing schema...")
@@ -58,7 +65,7 @@ class DatabaseService:
 
 
     def db_connection_works(self) -> bool:
-        """Check if the 'auth' database exists"""
+        """Check if the database exists"""
         try:
             _test_connection = self.create_connection()
             _test_connection.close()
@@ -69,7 +76,7 @@ class DatabaseService:
 
 
     def db_tables_exist(self) -> bool:
-        """Check if the required tables exist in the 'auth' database"""
+        """Check if the required tables exist in the database"""
         _test_connection = self.create_connection()
         try:
             one_user = self.execute_query("SELECT * FROM user LIMIT 1;", connection=_test_connection)
@@ -112,7 +119,7 @@ class DatabaseService:
             host=self.host,
             user=self.user,
             password=self.password,
-            database="auth",
+            database=self.database,
             port=self.port
         )
         
@@ -226,10 +233,12 @@ class DatabaseService:
             connection.close()
 
 init_sql = """
-CREATE DATABASE IF NOT EXISTS `auth`;
-USE `auth`;
+CREATE DATABASE IF NOT EXISTS `{db_name}`;
+USE `{db_name}`;
 
+DROP TABLE IF EXISTS `verification_code`;
 DROP TABLE IF EXISTS `user`;
+
 CREATE TABLE `user` (
   `id` varchar(40) NOT NULL,
   `username` varchar(255) NOT NULL,
@@ -245,7 +254,6 @@ CREATE TABLE `user` (
   PRIMARY KEY (`id`)
 );
 
-DROP TABLE IF EXISTS `verification_code`;
 CREATE TABLE `verification_code` (
   `user_id` varchar(36) NOT NULL,
   `value` varchar(6) NOT NULL,
