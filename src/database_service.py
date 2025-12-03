@@ -67,10 +67,20 @@ class DatabaseService:
     def db_connection_works(self) -> bool:
         """Check if the database exists"""
         try:
-            _test_connection = self.create_connection()
-            _test_connection.close()
-            return True
-        except mysql.connector.errors.ProgrammingError:
+            connection = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password,
+                port=self.port
+            )
+            cursor = connection.cursor()
+            cursor.execute(f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{self.database}'")
+            result = cursor.fetchone()
+            cursor.close()
+            connection.close()
+            return result is not None
+        except mysql.connector.Error as err:
+            logger.error(f"Error checking if database exists: {err}")
             return False
             
 
@@ -100,7 +110,8 @@ class DatabaseService:
         )
         try:
             cursor = connection.cursor()
-            for statement in init_sql.split(';'):
+            formatted_sql = init_sql.format(db_name=self.database)
+            for statement in formatted_sql.split(';'):
                 if statement.strip():
                     cursor.execute(statement)
             connection.commit()
