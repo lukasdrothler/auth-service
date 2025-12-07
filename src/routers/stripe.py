@@ -6,7 +6,7 @@ from src.dependencies import CurrentActiveUser, get_database_service, get_stripe
 
 import logging
 
-logger = logging.getLogger('uvicorn.error')
+logger = logging.getLogger(__name__)
 
 """Create user management router with dependency injection"""
 router = APIRouter()

@@ -8,7 +8,7 @@ import os
 import json
 import stripe
 
-logger = logging.getLogger('uvicorn.error')
+logger = logging.getLogger(__name__)
 
 
 class StripeService:
