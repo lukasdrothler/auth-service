@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException, status
 
+from src.services.rmq_service import RabbitMQService
 from src.services.auth_service import AuthService
 from src.models import UpdateForgottenPassword, UserInDB, VerifyEmailRequest
 from src.services.database_service import DatabaseService
@@ -71,32 +72,39 @@ def verify_user_email_with_code(verify_request: VerifyEmailRequest, db_service: 
     return {"detail": "Email verified successfully!"}
 
 
-# def resend_verification_code(email: str,db_service: DatabaseService,) -> dict:
+def resend_verification_code(
+        email: str, 
+        db_service: DatabaseService, 
+        auth_service: AuthService,
+        rmq_service: RabbitMQService,
+        ) -> dict:
+    """Resend verification code to user's email"""
+    user_validators.validate_email_format(email)
+    user = user_queries.get_user_by_email(email=email, db_service=db_service)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User with this email not found"
+        )
 
-#     user = user_queries.get_user_by_email(email=email, db_service=db_service)
-#     verification_code = verification_code_queries.create_verification_code(
-#         user=None,
-#         email=email,
-#         locale=locale,
-#         db_service=db_service,
-#         i18n_service=i18n_service
-#         )
+    if user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already verified"
+        )
+    
+    verification_code = auth_service.create_verification_code_for_user(
+        user_id=user.id,
+        db_service=db_service,
+        )
 
-#     if user.email_verified:
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             detail=i18n_service.t("api.auth.verification.email_already_verified", locale)
-#         )
+    rmq_service.publish_verify_mail_request(
+            username=user.username,
+            verification_code=verification_code,
+            recipient=email
+        )
 
-#     mail_service.send_email_verification_mail(
-#             recipient=user.email,
-#             username=user.username,
-#             verification_code=verification_code,
-#             i18n_service=i18n_service,
-#             locale=locale
-#         )
-
-#     return {"detail": i18n_service.t("api.auth.verification.verification_code_resent", locale)}
+    return {"detail": "A new verification code has been sent to your email."}
 
 
 # def send_forgot_password_verification(
@@ -142,65 +150,40 @@ def verify_user_email_with_code(verify_request: VerifyEmailRequest, db_service: 
 #     return {"detail": i18n_service.t("api.auth.forgot_password.forgot_password_verification_code_sent", locale)}
 
 
-# def send_email_change_verification(
-#         user: UserInDB,
-#         new_email: str,
-#         db_service: DatabaseService,
-#         mail_service: MailService, 
-#         i18n_service: I18nService,
-#         locale: str, 
-#         ) -> dict:
-#     """Initiate email change process by sending verification code to new email"""
+def send_email_change_verification(
+        user: UserInDB,
+        new_email: str,
+        db_service: DatabaseService,
+        auth_service: AuthService,
+        rmq_service: RabbitMQService,
+        ) -> dict:
+    """Initiate email change process by sending verification code to new email"""
 
-#     # Check if new email is the same as current email
-#     if user.email.lower() == new_email.lower():
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             detail=i18n_service.t("api.auth.validation.email_same_as_current", locale)
-#         )
+    # Check if new email is the same as current email
+    if user.email.lower() == new_email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The new email address must be different from the current one.",
+        )
 
-#     user_validators.validate_email_format(new_email, locale, i18n_service)
-#     user_validators.validate_email_unique(
-#             email=new_email,
-#             locale=locale, 
-#             db_service=db_service, 
-#             i18n_service=i18n_service
-#         )
-#     verification_code = verification_code_queries.create_verification_code(
-#         user=user,
-#         email=new_email,
-#         locale=locale,
-#         db_service=db_service,
-#         i18n_service=i18n_service
-#     )
+    user_validators.validate_email_format(new_email)
+    user_validators.validate_email_unique(new_email, db_service)
+
+    verification_code = auth_service.create_verification_code_for_user(
+        user_id=user.id,
+        db_service=db_service,
+        )
     
-#     try:
-#         # Use template system for email change verification
-#         mail_service.send_email_html(
-#             template_name="email_change_verification",
-#             variables={
-#                 "username": user.username,
-#                 "verification_code": verification_code,
-#             },
-#             subject=i18n_service.t(
-#                 key="email.shared_content.verification_code_subject", 
-#                 locale=locale,
-#                 verification_code=verification_code
-#                 ),
-#             recipient=new_email,
-#             locale=locale,
-#             i18n_service=i18n_service
-#         )
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=i18n_service.t("api.email.email_sending_failed", locale, error=str(e))
-#         )
-    
-#     return {"detail": i18n_service.t("api.auth.email_change.email_change_verification_sent", locale)}
+    rmq_service.publish_email_change_verification_request(
+            username=user.username,
+            verification_code=verification_code,
+            recipient=new_email
+        )
+
+    return {"detail": "A verification code has been sent to your new email address."}
 
 
-def verify_user_email_change(user: UserInDB, verify_request: VerifyEmailRequest,db_service: DatabaseService) -> dict:
+def verify_user_email_change(user: UserInDB, verify_request: VerifyEmailRequest, db_service: DatabaseService) -> dict:
     """Verify email change using 6-digit code and update user's email"""
     _check_verification_code(
         user=user,

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from src.dependencies import get_auth_service, get_database_service, get_rmq_service, CurrentActiveUser, CurrentAdminUser, IsInternalRequest
 from src.models import SendVerificationRequest, User, CreateUser, UpdateUser, UpdatePassword, VerifyEmailRequest, CreateVerificationCodeResponse, UpdateForgottenPassword, UserInDBNoPassword
 from src.user_queries import get_all_users, delete_user
-from src.email_verification import verify_user_email_with_code, verify_user_email_change, verify_forgot_password_with_code, update_forgotten_password_with_code
+from src.email_verification import verify_user_email_with_code, verify_user_email_change, verify_forgot_password_with_code, update_forgotten_password_with_code, resend_verification_code, send_email_change_verification
 from src.services.auth_service import AuthService
 from src.services.rmq_service import RabbitMQService
 from src.services.database_service import DatabaseService
@@ -102,16 +102,12 @@ def send_new_verification_code(
     auth_service: AuthService = Depends(get_auth_service),
     rmq_service: RabbitMQService = Depends(get_rmq_service),
 ):
-    respone = auth_service.resend_verification_code(
+    return resend_verification_code(
         email=send_verification_request.email,
         db_service=db_service,
-        )
-    rmq_service.publish_verify_mail_request(
-            username=respone.username,
-            verification_code=respone.value,
-            recipient=send_verification_request.email
-        )
-    return {"detail": "A new verification code has been sent to your email."}
+        auth_service=auth_service,
+        rmq_service=rmq_service
+    )
 
 
 @router.put("/user/me", status_code=200, tags=["user-information"])
@@ -144,18 +140,22 @@ def change_user_password(
         )
 
 
-# @router.post("/user/me/email/change", status_code=200, tags=["user-information"])
-# def request_user_email_change(
-#     send_verification_request: SendVerificationRequest,
-#     current_user: CurrentActiveUser,
-#     db_service: DatabaseService = Depends(get_database_service),
-# ):
-#     """Initiate email change process - sends verification code to new email"""
-#     return send_email_change_verification(
-#         user=current_user,
-#         new_email=send_verification_request.email,
-#         db_service=db_service,
-#         )
+@router.post("/user/me/email/change", status_code=200, tags=["user-information"])
+def request_user_email_change(
+    send_verification_request: SendVerificationRequest,
+    current_user: CurrentActiveUser,
+    db_service: DatabaseService = Depends(get_database_service),
+    auth_service: AuthService = Depends(get_auth_service),
+    rmq_service: RabbitMQService = Depends(get_rmq_service),
+):
+    """Initiate email change process - sends verification code to new email"""
+    return send_email_change_verification(
+        user=current_user,
+        new_email=send_verification_request.email,
+        db_service=db_service,
+        auth_service=auth_service,
+        rmq_service=rmq_service,
+    )
 
 
 @router.post("/user/me/email/verify", status_code=200, tags=["user-information"])
