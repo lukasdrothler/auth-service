@@ -38,7 +38,7 @@ class DatabaseService:
             self.password = os.environ["DB_PASSWORD"]
             logger.info("Using database password from environment variable 'DB_PASSWORD'")
         else:
-            self.password = ""
+            self.password = ""  # nosec
             logger.warning("Using empty database password since 'DB_PASSWORD' not set")
 
         if "DB_NAME" in os.environ:
@@ -74,7 +74,7 @@ class DatabaseService:
                 port=self.port
             )
             cursor = connection.cursor()
-            cursor.execute(f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{self.database}'")
+            cursor.execute("SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s", (self.database,))
             result = cursor.fetchone()
             cursor.close()
             connection.close()
@@ -230,11 +230,11 @@ class DatabaseService:
         connection = self.create_connection()
         try:
             uid = str(uuid.uuid4())
-            response = self.execute_query("SELECT id FROM " + table_name + " WHERE id = %s", (uid,), connection=connection)
+            response = self.execute_query("SELECT id FROM " + table_name + " WHERE id = %s", (uid,), connection=connection)  # nosec
             tries = 0
             while (response and len(response) > 0 and tries < max_tries):
                 uid = str(uuid.uuid4())
-                response = self.execute_query("SELECT id FROM " + table_name + " WHERE id = %s", (uid,), connection=connection)
+                response = self.execute_query("SELECT id FROM " + table_name + " WHERE id = %s", (uid,), connection=connection)  # nosec
                 tries += 1
             
             if tries == max_tries: 

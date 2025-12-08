@@ -116,4 +116,4 @@ class RabbitMQService:
 class TemplateName():
     EMAIL_VERIFICATION = "email_verification"
     EMAIL_CHANGE_VERIFICATION = "email_change_verification"
-    FORGOT_PASSWORD_VERIFICATION = "forgot_password_verification"
+    FORGOT_PASSWORD_VERIFICATION = "forgot_password_verification"  # nosec

@@ -1,5 +1,5 @@
-exclude_dirs: ['tests']
+exclude_dirs: ['tests', '.venv']
 # tests: ['B201', 'B301']
-# skips: ['B101', 'B601']
+# skips: ['B608', 'B107', 'B105', 'B101']
 # output_format: 'json'
 # output_file: 'bandit_report.txt'

@@ -26,7 +26,7 @@ class AuthService:
     def __init__(self,
                  access_token_expire_minutes=30,
                  refresh_token_expire_days=30,
-                 token_url="token",
+                 token_url="token",  # nosec
                  private_key_filename: str = "private_key.pem",
                  public_key_filename: str = "public_key.pem",
                  keys_dir: str = None

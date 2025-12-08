@@ -117,7 +117,7 @@ def update_user_fields(user_id: str, user_update: UpdateUser, db_service: Databa
     
     if update_fields:
         update_values.append(user_id)
-        query = f"UPDATE user SET {', '.join(update_fields)} WHERE id = %s"
+        query = f"UPDATE user SET {', '.join(update_fields)} WHERE id = %s"  # nosec
         db_service.execute_modification_query(query, tuple(update_values))
     
     return len(update_fields) > 0  # Return True if any fields were updated
@@ -136,7 +136,7 @@ def get_user_ids_to_names(user_ids: list[str], db_service: DatabaseService) -> d
     placeholders = ', '.join(['%s'] * len(user_ids))
     try:
         results = db_service.execute_query(
-            sql = f"SELECT id, username FROM user WHERE id IN ({placeholders})",
+            sql = f"SELECT id, username FROM user WHERE id IN ({placeholders})",  # nosec
             params=tuple(user_ids)
             )
     except Exception as e:

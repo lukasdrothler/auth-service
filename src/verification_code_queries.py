@@ -9,14 +9,14 @@ from src.models import UserInDB, VerificationCode
 from src.database_service import DatabaseService
 from src import user_queries
 
-import random
+import secrets
 import os
 
 
 
 def generate_verification_code() -> str:
     """Generate a 6-digit verification code"""
-    return ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
 
 def get_verification_code_by_user_id(user_id: str, db_service: DatabaseService) -> Optional[VerificationCode]:

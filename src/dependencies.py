@@ -72,7 +72,7 @@ def create_rmq_service() -> RabbitMQService:
 def create_auth_service(
     access_token_expire_minutes: int = 30,
     refresh_token_expire_days: int = 30,
-    token_url: str = "token",
+    token_url: str = "token",  # nosec
     private_key_filename: str = "private_key.pem",
     public_key_filename: str = "public_key.pem"
 ):
@@ -89,7 +89,7 @@ def create_auth_service(
 def setup_dependencies(
     access_token_expire_minutes: int = 30,
     refresh_token_expire_days: int = 30,
-    token_url: str = "token",
+    token_url: str = "token",  # nosec
     private_key_filename: str = "private_key.pem",
     public_key_filename: str = "public_key.pem"
 ) -> None:
