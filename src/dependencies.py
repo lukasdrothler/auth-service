@@ -9,6 +9,7 @@ from src.models import UserInDB
 from src.database_service import DatabaseService
 from src.auth_service import AuthService
 from src.stripe_service import StripeService
+from src.rmq_service import RabbitMQService
 
 import os
 
@@ -63,6 +64,11 @@ def create_stripe_service() -> StripeService:
     return StripeService()
 
 
+def create_rmq_service() -> RabbitMQService:
+    """Factory function to create RabbitMQService instance"""
+    return RabbitMQService()
+
+
 def create_auth_service(
     access_token_expire_minutes: int = 30,
     refresh_token_expire_days: int = 30,
@@ -93,6 +99,7 @@ def setup_dependencies(
     # Register singleton instances
     container.register_singleton("database_service", create_database_service())
     container.register_singleton("stripe_service", create_stripe_service())
+    container.register_singleton("rmq_service", create_rmq_service())
 
     # Register AuthService singleton instance
     container.register_singleton(
@@ -105,6 +112,11 @@ def setup_dependencies(
             public_key_filename=public_key_filename
         )
     )
+
+
+def get_rmq_service() -> RabbitMQService:
+    """FastAPI dependency function to get RabbitMQService instance"""
+    return container.get("rmq_service")
 
 
 def get_auth_service() -> AuthService:
