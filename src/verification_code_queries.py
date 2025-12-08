@@ -69,7 +69,7 @@ def mark_verification_code_as_used(user_id: str, db_service: DatabaseService) ->
 
 
 def check_can_send_verification(user: Optional[UserInDB], db_service: DatabaseService) -> bool:
-    """Check if user can resend verification code (1 minute cooldown)"""
+    """Check if user can resend verification code (30 seconds cooldown)"""
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -86,12 +86,12 @@ def check_can_send_verification(user: Optional[UserInDB], db_service: DatabaseSe
     
     created_at = existing_code['created_at']
     
-    # Check if 1 minute has passed since last code generation
+    # Check if 30 seconds has passed since last code generation
     time_diff = datetime.now(timezone.utc) - created_at.replace(tzinfo=timezone.utc)
-    if time_diff <= timedelta(minutes=1):
+    if time_diff <= timedelta(seconds=30):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Please wait a minute before requesting another verification code.",
+            detail="Please wait 30 seconds before requesting another verification code.",
         )
     return None
 

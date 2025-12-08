@@ -36,7 +36,7 @@ def test_create_and_get_verification_code(db_service):
     # Update verification code (create again)
     # We need to bypass the cooldown check for this test or wait/manipulate time
     # But create_verification_code calls check_can_send_verification.
-    # check_can_send_verification checks if 1 minute has passed.
+    # check_can_send_verification checks if 30 seconds has passed.
     # To test update, we can manually update the created_at to be in the past.
     
     past_time = datetime.now(timezone.utc) - timedelta(minutes=2)
@@ -89,13 +89,13 @@ def test_check_can_send_verification(db_service):
     # Create code
     verification_code_queries.create_verification_code(user, email, db_service)
     
-    # Check immediately, should fail because of the 1 minute cooldown
+    # Check immediately, should fail because of the 30 seconds cooldown
     with pytest.raises(HTTPException) as excinfo:
         verification_code_queries.check_can_send_verification(user, db_service)
     assert excinfo.value.status_code == 429
     
-    # Manually update created_at to be > 1 minute ago
-    past_time = datetime.now(timezone.utc) - timedelta(minutes=2)
+    # Manually update created_at to be > 30 seconds ago
+    past_time = datetime.now(timezone.utc) - timedelta(seconds=31)
     db_service.execute_modification_query(
         "UPDATE verification_code SET created_at = %s WHERE user_id = %s",
         (past_time, user.id)
