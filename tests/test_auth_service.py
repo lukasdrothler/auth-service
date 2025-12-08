@@ -2,7 +2,8 @@ import pytest
 from fastapi import HTTPException, status
 import jwt
 from src.models import CreateUser, UpdateUser, UpdatePassword
-from src import user_queries
+from src import user_queries, verification_code_queries
+from datetime import datetime, timedelta, timezone
 
 def test_password_hashing(auth_service):
     password = "TestPassword123"
@@ -245,3 +246,60 @@ def test_get_current_active_user_disabled(auth_service, db_service):
         auth_service.get_current_active_user(disabled_user)
     assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
     assert exc.value.detail == "Inactive user"
+
+
+def test_generate_verification_code(auth_service):
+    code = auth_service.generate_verification_code()
+    assert isinstance(code, str)
+    assert len(code) == 6
+    assert code.isdigit()
+
+def test_check_can_send_verification(auth_service, db_service):
+    # Setup user
+    user_data = CreateUser(
+        username="cooldown_user",
+        email="cooldown@example.com",
+        password="TestPassword123"
+    )
+    auth_service.register_new_user(user_data, db_service)
+    user = auth_service.authenticate_user("cooldown_user", "TestPassword123", db_service)
+    
+    # register_new_user already created a code, so cooldown should be active
+    with pytest.raises(HTTPException) as excinfo:
+        auth_service.check_can_send_verification(user.id, db_service)
+    assert excinfo.value.status_code == 429
+    
+    # Manually update created_at to be > 30 seconds ago
+    past_time = datetime.now(timezone.utc) - timedelta(seconds=31)
+    db_service.execute_modification_query(
+        "UPDATE verification_code SET created_at = %s WHERE user_id = %s",
+        (past_time, user.id)
+    )
+    
+    # Should pass now
+    assert auth_service.check_can_send_verification(user.id, db_service) is None
+
+def test_create_verification_code_for_user(auth_service, db_service):
+    # Setup user
+    user_data = CreateUser(
+        username="verify_code_user",
+        email="verify_code@example.com",
+        password="TestPassword123"
+    )
+    auth_service.register_new_user(user_data, db_service)
+    user = auth_service.authenticate_user("verify_code_user", "TestPassword123", db_service)
+    
+    # Manually update created_at to be > 30 seconds ago to allow new code
+    past_time = datetime.now(timezone.utc) - timedelta(seconds=31)
+    db_service.execute_modification_query(
+        "UPDATE verification_code SET created_at = %s WHERE user_id = %s",
+        (past_time, user.id)
+    )
+    
+    # Create new code
+    new_code = auth_service.create_verification_code_for_user(user.id, db_service)
+    assert len(new_code) == 6
+    
+    # Verify in DB
+    stored_code = verification_code_queries.get_verification_code_by_user_id(user.id, db_service)
+    assert stored_code.value == new_code

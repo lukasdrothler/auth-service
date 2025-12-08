@@ -1,4 +1,3 @@
-
 from src.models import CreateVerificationCodeResponse, UserInDB, CreateUser, UpdateUser, UpdatePassword, Token, TokenData
 from src.services.database_service import DatabaseService
 
@@ -17,6 +16,7 @@ from cryptography.hazmat.backends import default_backend
 import jwt
 import os
 import logging
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +230,44 @@ class AuthService:
             db_service=db_service
             )
         return Token(access_token=access_token)
+    
+    def generate_verification_code(self) -> str:
+        """Generate a 6-digit verification code"""
+        return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
+    def check_can_send_verification(self, user_id: str, db_service: DatabaseService) -> None:
+        """Check if user can resend verification code (30 seconds cooldown)"""
+        existing_code = verification_code_queries.get_verification_code_by_user_id(user_id, db_service)
+
+        if not existing_code:
+            return None
+        
+        created_at = existing_code.created_at
+        
+        # Check if 30 seconds has passed since last code generation
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+            
+        time_diff = datetime.now(timezone.utc) - created_at
+        if time_diff <= timedelta(seconds=30):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Please wait 30 seconds before requesting another verification code.",
+            )
+        return None
+
+    def create_verification_code_for_user(self, user_id: str, db_service: DatabaseService) -> str:
+        """Create or update regular verification code for user"""
+        self.check_can_send_verification(user_id, db_service)
+        
+        new_code = self.generate_verification_code()
+        
+        verification_code_queries.upsert_verification_code(
+            user_id=user_id,
+            code=new_code,
+            db_service=db_service
+        )
+        return new_code
 
     def register_new_user(self, user: CreateUser, db_service: DatabaseService) -> CreateVerificationCodeResponse:
         """Create a new user"""
@@ -244,13 +281,37 @@ class AuthService:
             db_service=db_service,
         )
         
+        created_user = user_queries.get_user_by_username(user.username, db_service)
+
         # Generate 6-digit verification code
-        verification_code = verification_code_queries.create_verification_code(
-            user=None,
-            email=user.email,
+        verification_code = self.create_verification_code_for_user(
+            user_id=created_user.id,
             db_service=db_service,
         )
 
+        return CreateVerificationCodeResponse(
+            username=user.username,
+            email=user.email,
+            value=verification_code
+        )
+    
+    def resend_verification_code(self, email: str, db_service: DatabaseService) -> CreateVerificationCodeResponse:
+        """Resend verification code to user's email"""
+        user = user_queries.get_user_by_email(email, db_service)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User with the specified email not found"
+            )
+        
+        self.check_can_send_verification(user.id, db_service)
+        
+        # Generate new verification code
+        verification_code = self.create_verification_code_for_user(
+            user_id=user.id,
+            db_service=db_service,
+        )
+        
         return CreateVerificationCodeResponse(
             username=user.username,
             email=user.email,
