@@ -3,7 +3,7 @@ from main import app
 import pytest
 
 @pytest.fixture
-def client(db_service):
+def client(db_service, rmq_service):
     with TestClient(app) as c:
         yield c
 
