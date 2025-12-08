@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from src.dependencies import get_auth_service, get_database_service, get_rmq_service, CurrentActiveUser, CurrentAdminUser, IsInternalRequest
 from src.models import SendVerificationRequest, User, CreateUser, UpdateUser, UpdatePassword, VerifyEmailRequest, CreateVerificationCodeResponse, UpdateForgottenPassword, UserInDBNoPassword
 from src.user_queries import get_all_users, delete_user
-from src.email_verification import verify_user_email_with_code, verify_user_email_change, verify_forgot_password_with_code, update_forgotten_password_with_code, resend_verification_code, send_email_change_verification
+from src.email_verification import verify_user_email_with_code, verify_user_email_change, verify_forgot_password_with_code, update_forgotten_password_with_code, resend_verification_code, send_email_change_verification, send_forgot_password_verification
 from src.services.auth_service import AuthService
 from src.services.rmq_service import RabbitMQService
 from src.services.database_service import DatabaseService
@@ -172,15 +172,19 @@ def user_email_change_verification(
         )
 
 
-# @router.post("/user/forgot-password/request", status_code=200, tags=["user-password-recovery"])
-# def request_forgot_password(
-#     send_verification_request: SendVerificationRequest,
-#     db_service: DatabaseService = Depends(get_database_service),
-# ):
-#     return send_forgot_password_verification(
-#         email=send_verification_request.email,
-#         db_service=db_service,
-#         )
+@router.post("/user/forgot-password/request", status_code=200, tags=["user-password-recovery"])
+def request_forgot_password(
+    send_verification_request: SendVerificationRequest,
+    db_service: DatabaseService = Depends(get_database_service),
+    auth_service: AuthService = Depends(get_auth_service),
+    rmq_service: RabbitMQService = Depends(get_rmq_service),
+):
+    return send_forgot_password_verification(
+        email=send_verification_request.email,
+        db_service=db_service,
+        auth_service=auth_service,
+        rmq_service=rmq_service,
+        )
 
 
 @router.post("/user/forgot-password/verify", status_code=200, tags=["user-password-recovery"])

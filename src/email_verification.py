@@ -43,6 +43,13 @@ def _check_verification_code(user: Optional[UserInDB], code: str, db_service: Da
             detail="Verification code has expired. Please request a new one.",
         )
     
+    # Check if code is already used
+    if verification_record.verified_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has already been used.",
+        )
+    
     return None
 
 
@@ -107,48 +114,26 @@ def resend_verification_code(
     return {"detail": "A new verification code has been sent to your email."}
 
 
-# def send_forgot_password_verification(
-#         email: str,
-#         db_service: DatabaseService,
-#         mail_service: MailService,
-#         i18n_service: I18nService,
-#         locale: str,
-#     ) -> dict:
+def send_forgot_password_verification(
+        email: str,
+        db_service: DatabaseService,
+        auth_service: AuthService,
+        rmq_service: RabbitMQService,
+    ) -> dict:
 
-#     user = user_queries.get_user_by_email(email=email, db_service=db_service)
-#     verification_code = verification_code_queries.create_verification_code(
-#         user=None,
-#         email=email,
-#         locale=locale,
-#         db_service=db_service,
-#         i18n_service=i18n_service
-#         )
+    user = user_queries.get_user_by_email(email=email, db_service=db_service)
+    verification_code = auth_service.create_verification_code_for_user(
+        user_id=user.id,
+        db_service=db_service,
+        )
 
-#     try:
-#         # Use template system for forgot password verification
-#         mail_service.send_email_html(
-#             template_name="forgot_password_verification",
-#             variables={
-#                 "username": user.username,
-#                 "verification_code": verification_code,
-#             },
-#             subject=i18n_service.t(
-#                 key="email.shared_content.verification_code_subject", 
-#                 locale=locale,
-#                 verification_code=verification_code
-#                 ),
-#             recipient=email,
-#             locale=locale,
-#             i18n_service=i18n_service
-#         )
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=i18n_service.t("api.email.email_sending_failed", locale, error=str(e))
-#         )
+    rmq_service.publish_forgot_password_verification_request(
+            username=user.username,
+            verification_code=verification_code,
+            recipient=email
+        )
 
-#     return {"detail": i18n_service.t("api.auth.forgot_password.forgot_password_verification_code_sent", locale)}
-
+    return {"detail": "A verification code has been sent to your email address."}
 
 def send_email_change_verification(
         user: UserInDB,
@@ -219,7 +204,7 @@ def update_forgotten_password_with_code(
     user = user_queries.get_user_by_email(update_forgotten_password.email, db_service)
     _check_verification_code(user, update_forgotten_password.verification_code, db_service)
 
-    _use_verification_code (user.id, db_service)
+    _use_verification_code(user.id, db_service)
 
     auth_service.update_password(
         user_id=user.id,

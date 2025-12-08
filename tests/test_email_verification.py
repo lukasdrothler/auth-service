@@ -169,3 +169,17 @@ def test_verify_user_email_updates_status(db_service: DatabaseService, auth_serv
     # Fetch user again to check status
     updated_user = user_queries.get_user_by_id(user.id, db_service)
     assert updated_user.email_verified is True
+
+def test_verify_user_email_change_already_used(db_service: DatabaseService, auth_service: AuthService):
+    user, code = create_user_and_code(auth_service, db_service, "used_code_user", "used_code@example.com")
+    
+    request = VerifyEmailRequest(email=user.email, code=code)
+    
+    # First verification should succeed
+    verify_user_email_with_code(request, db_service)
+    
+    # Second verification should fail
+    with pytest.raises(HTTPException) as excinfo:
+        verify_user_email_with_code(request, db_service)
+    assert excinfo.value.status_code == 400
+    assert excinfo.value.detail == "Verification code has already been used."
