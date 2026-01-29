@@ -49,14 +49,38 @@ class RabbitMQService:
             logger.info('RabbitMQ Provider connection closed.')
 
     def connect(self):
-        """Establish connection and channel"""
+        """Establish connection and channel and declare DLX/queue safely.
+        Avoid PRECONDITION_FAILED when a queue already exists with different arguments.
+        """
         self.connection = self._connect_with_retry()
         self.channel = self.connection.channel()
-        self.channel.queue_declare(
-            queue=self.mail_queue_name, 
-            durable=True,
-            arguments={"x-dead-letter-exchange": f"{self.mail_queue_name}_dlx"}
-        )
+        dlx_name = f"{self.mail_queue_name}_dlx"
+        # Ensure the dead-letter-exchange exists.
+        try:
+            self.channel.exchange_declare(exchange=dlx_name, exchange_type='direct', durable=True)
+        except Exception as e:
+            logger.warning(f"Failed to declare DLX exchange '{dlx_name}': {e}")
+
+        # If the queue already exists, declaring it with different arguments will
+        # raise PRECONDITION_FAILED. Use passive declare to detect existence: if
+        # the queue exists, skip (we cannot change its arguments); if it does not
+        # exist, create it with the DLX argument.
+        try:
+            self.channel.queue_declare(queue=self.mail_queue_name, passive=True)
+            logger.info(f"Queue '{self.mail_queue_name}' already exists, not modifying arguments.")
+        except pika.exceptions.ChannelClosedByBroker:
+            # Channel was closed because passive declare failed (queue not found).
+            # Reopen channel and declare the queue with DLX.
+            self.channel = self.connection.channel()
+            self.channel.queue_declare(
+                queue=self.mail_queue_name,
+                durable=True,
+                arguments={"x-dead-letter-exchange": dlx_name}
+            )
+            logger.info(f"Queue '{self.mail_queue_name}' created with DLX '{dlx_name}'.")
+        except Exception as e:
+            logger.error(f"Unexpected error while declaring queue '{self.mail_queue_name}': {e}")
+            raise
 
     def _connect_with_retry(self, max_retries=10, retry_delay=5) -> pika.BlockingConnection:
         """Connect to RabbitMQ with retry logic for container startup"""
