@@ -1,37 +1,24 @@
+# needed services to run the authentication service locally for development
 services:
-  auth-mysql:
-    container_name: auth-mysql
-    hostname: auth-mysql
+  mysql:
+    container_name: mysql
+    hostname: mysql
     restart: unless-stopped
-    image: mysql:8.3
+    image: mysql:9.6.0
     volumes:
       - ./var/lib/mysql:/var/lib/mysql
-      # - ./initialize_database.sql:/docker-entrypoint-initdb.d/initialize_database.sql
     ports:
-      - "${DB_PORT}:3306"
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-    networks:
-      - default
-
-  auth-service:
-    container_name: auth-service
-    hostname: auth-service
-    build: .
+  rabbitmq:
+    container_name: rabbitmq
+    hostname: rabbitmq
     restart: unless-stopped
-    depends_on:
-      - auth-mysql
+    image: rabbitmq:4.2.3-management
     ports:
-      - "8007:8007"
-    env_file:
-      - .env
+      - "5672:5672"
+      - "15672:15672"
     environment:
-      - DB_HOST=auth-mysql
-    volumes:
-      - .:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8007 --reload
-    networks:
-      - default
-
-networks:
-  default:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
