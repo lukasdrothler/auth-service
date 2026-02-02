@@ -38,6 +38,13 @@ class RabbitMQService:
         else:
             raise ValueError("RABBITMQ_PASSWORD environment variable is required")
 
+        if "RABBITMQ_HEARTBEAT" in os.environ:
+            self.heartbeat = int(os.environ["RABBITMQ_HEARTBEAT"])
+            logger.info(f"RabbitMQ heartbeat set to: {self.heartbeat}")
+        else:
+            self.heartbeat = 0
+            logger.info(f"RabbitMQ heartbeat set to default: {self.heartbeat}")
+
         # Connect to RabbitMQ with retry logic
         self.connect()
 
@@ -89,7 +96,7 @@ class RabbitMQService:
             host=self.host,
             port=self.port,
             credentials=credentials,
-            heartbeat=600,
+            heartbeat=self.heartbeat,
             blocked_connection_timeout=300
         )
         
