@@ -105,22 +105,22 @@ def test_validate_user_update(postgres_service):
     assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
 def test_validate_new_password(auth_service):
-    pwd_context = auth_service.pwd_context
+    password_hash = auth_service.password_hash
     current_password = "OldPassword123"
     current_hashed = auth_service.get_password_hash(current_password)
     
     # Valid update
     update = UpdatePassword(current_password=current_password, new_password="NewPassword123")
-    user_validators.validate_new_password(current_hashed, pwd_context, update)
+    user_validators.validate_new_password(current_hashed, password_hash, update)
 
     # Invalid current password
     update_wrong = UpdatePassword(current_password="WrongPassword", new_password="NewPassword123")
     with pytest.raises(HTTPException) as exc_info:
-        user_validators.validate_new_password(current_hashed, pwd_context, update_wrong)
+        user_validators.validate_new_password(current_hashed, password_hash, update_wrong)
     assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
 
     # Test with allow_same_as_current=False
     update_same = UpdatePassword(current_password=current_password, new_password=current_password)
     with pytest.raises(HTTPException) as exc_info:
-        user_validators.validate_new_password(current_hashed, pwd_context, update_same, allow_same_as_current=False)
+        user_validators.validate_new_password(current_hashed, password_hash, update_same, allow_same_as_current=False)
     assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST

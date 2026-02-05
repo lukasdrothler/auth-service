@@ -5,7 +5,7 @@ from src import user_queries, verification_code_queries, user_validators
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from passlib.context import CryptContext
+from pwdlib import PasswordHash, exceptions as pwdlib_exceptions
 from jwt.exceptions import InvalidTokenError
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -85,18 +85,18 @@ class AuthService:
         self.refresh_token_expire_days = refresh_token_expire_days
         self.token_url = token_url
 
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self.password_hash = PasswordHash.recommended()
         self.oauth2_scheme = OAuth2PasswordBearer(tokenUrl=self.token_url)
 
     
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash"""
-        return self.pwd_context.verify(plain_password, hashed_password)
+        return self.password_hash.verify(plain_password, hashed_password)
     
 
     def get_password_hash(self, password: str) -> str:
         """Hash a password"""
-        return self.pwd_context.hash(password)
+        return self.password_hash.hash(password)
 
 
     def create_bearer_token(self, user: UserInDB, postgres_service: PostgresService, is_refresh: bool = False) -> str:
@@ -160,14 +160,20 @@ class AuthService:
                 detail="User does not have a password set"
             )
 
-        if not self.verify_password(password, user.hashed_password):
-            logger.error(f"Invalid password for user '{username_or_email}'")
+        try:
+            if not self.verify_password(password, user.hashed_password):
+                logger.error(f"Invalid password for user '{username_or_email}'")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect username or password",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        # Users with an old passlib hash. Notify them to reset their password
+        except pwdlib_exceptions.UnknownHashError:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"},
+                status_code=status.HTTP_417_EXPECTATION_FAILED,
+                detail="User has an old password hash that cannot be verified"
             )
-
         return user
     
 
@@ -414,7 +420,7 @@ class AuthService:
                 password_update=password_update,
                 current_hashed_password=current_user.hashed_password,
                 new_password=new_password,
-                pwd_context=self.pwd_context,
+                password_hash=self.password_hash,
             )
 
         if password_update is not None:
