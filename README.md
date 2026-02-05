@@ -41,8 +41,8 @@ openssl rsa -in keys/private_key.pem -pubout -out keys/public_key.pem
 CURRENT_ENV=development  # or production
 
 # Server
-AUTH_SVC_HOST=0.0.0.0
-AUTH_SVC_PORT=8007
+HOST=0.0.0.0
+PORT=8007
 
 # Database
 POSTGRES_HOST=localhost
