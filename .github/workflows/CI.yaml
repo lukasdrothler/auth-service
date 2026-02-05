@@ -84,13 +84,13 @@ jobs:
       - name: Update Image Tag
         run: |
           # Navigate to the directory containing kustomization.yaml
-          cd apps/inte/finyed/overlays/dev
+          cd apps/inte/finyed
           
           # Update the image tag using sed
-          sed -i '/name: ghcr.io\/lukasdrothler\/auth-service/,/newTag:/ s|newTag: .*|newTag: ${{ github.sha }}|' apps/inte/finyed/overlays/dev/kustomization.yaml
+          sed -i '/name: ghcr.io\/lukasdrothler\/auth-service/,/newTag:/ s|newTag: .*|newTag: ${{ github.sha }}|' apps/inte/finyed/kustomization.yaml
       - name: Commit and Push Changes
         run: |
-          cd apps/inte/finyed/overlays/dev
+          cd apps/inte/finyed
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
