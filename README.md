@@ -45,11 +45,11 @@ AUTH_SVC_HOST=0.0.0.0
 AUTH_SVC_PORT=8007
 
 # Database
-DB_HOST=localhost
-DB_PORT=3306
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
 DB_USER=your_user
 DB_PASSWORD=your_password
-DB_NAME=auth_db
+DB_NAME=auth
 
 # Stripe (optional)
 STRIPE_SECRET_API_KEY=sk_test_xxxxx

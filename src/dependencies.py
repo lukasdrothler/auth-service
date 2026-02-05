@@ -6,12 +6,10 @@ from fastapi import Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 
 from src.models import UserInDB
-from src.services.database_service import DatabaseService
+from src.services.postgres_service import PostgresService
 from src.services.auth_service import AuthService
 from src.services.stripe_service import StripeService
 from src.services.rmq_service import RabbitMQService
-
-import os
 
 
 class DependencyContainer:
@@ -53,10 +51,9 @@ class DependencyContainer:
 # Global dependency container instance
 container = DependencyContainer()
 
-
-def create_database_service() -> DatabaseService:
-    """Factory function to create DatabaseService instance"""
-    return DatabaseService()
+def create_postgres_service() -> PostgresService:
+    """Factory function to create PostgresService instance"""
+    return PostgresService()
 
 
 def create_stripe_service() -> StripeService:
@@ -97,7 +94,7 @@ def setup_dependencies(
     container.clear()
     
     # Register singleton instances
-    container.register_singleton("database_service", create_database_service())
+    container.register_singleton("postgres_service", create_postgres_service())
     container.register_singleton("stripe_service", create_stripe_service())
     container.register_singleton("rmq_service", create_rmq_service())
 
@@ -124,9 +121,9 @@ def get_auth_service() -> AuthService:
     return container.get("auth_service")
 
 
-def get_database_service() -> DatabaseService:
-    """FastAPI dependency function to get DatabaseService instance"""
-    return container.get("database_service")
+def get_postgres_service() -> PostgresService:
+    """FastAPI dependency function to get PostgresService instance"""
+    return container.get("postgres_service")
 
 
 def get_stripe_service() -> StripeService:
@@ -141,10 +138,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     auth_service = Depends(get_auth_service),
-    db_service: DatabaseService = Depends(get_database_service),
+    postgres_service: PostgresService = Depends(get_postgres_service)
 ) -> UserInDB:
     """Dependency to get current user from JWT token"""
-    return auth_service.get_current_user(token, db_service=db_service)
+    return auth_service.get_current_user(token, postgres_service=postgres_service)
 
 
 def get_current_active_user(

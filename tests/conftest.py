@@ -1,9 +1,9 @@
 import os
 import pytest
 from dotenv import load_dotenv
-from testcontainers.mysql import MySqlContainer
+from testcontainers.postgres import PostgresContainer
 from testcontainers.rabbitmq import RabbitMqContainer
-from src.services.database_service import DatabaseService
+from src.services.postgres_service import PostgresService
 from src.services.auth_service import AuthService
 from src.services.rmq_service import RabbitMQService
 
@@ -18,12 +18,12 @@ if not os.path.exists(os.environ["RSA_KEYS_DIR"]):
 
 
 @pytest.fixture(scope="session")
-def mysql_container():
+def postgres_container():
     """
-    Fixture to provide a MySQL container.
+    Fixture to provide a Postgres container.
     """
-    with MySqlContainer("mysql:8.3", dbname="auth_test") as mysql:
-        yield mysql
+    with PostgresContainer("postgres:18") as postgres:
+        yield postgres
 
 @pytest.fixture(scope="session")
 def rabbitmq_container():
@@ -34,20 +34,20 @@ def rabbitmq_container():
         yield rabbitmq
 
 @pytest.fixture(scope="function")
-def db_service(mysql_container):
+def postgres_service(postgres_container):
     """
-    Fixture to provide a DatabaseService instance connected to a test database.
+    Fixture to provide a PostgresService instance connected to a test database.
     This fixture ensures the test database is initialized and clean before each test.
     """
     old_environ = os.environ.copy()
     # Set environment variables to point to the container
-    os.environ["DB_HOST"] = mysql_container.get_container_host_ip()
-    os.environ["DB_PORT"] = str(mysql_container.get_exposed_port(3306))
-    os.environ["DB_USER"] = mysql_container.username
-    os.environ["DB_PASSWORD"] = mysql_container.password
-    os.environ["DB_NAME"] = mysql_container.dbname
+    os.environ["POSTGRES_HOST"] = postgres_container.get_container_host_ip()
+    os.environ["POSTGRES_PORT"] = str(postgres_container.get_exposed_port(5432))
+    os.environ["POSTGRES_USER"] = postgres_container.username
+    os.environ["POSTGRES_PASSWORD"] = postgres_container.password
+    os.environ["POSTGRES_DB_NAME"] = postgres_container.dbname
 
-    service = DatabaseService()
+    service = PostgresService()
 
     # Re-initialize the database schema to ensure a clean state for each test
     service.execute_init_db_sql()

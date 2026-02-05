@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status, Request, Header
 
 from src import user_queries
-from src.services.database_service import DatabaseService
+from src.services.postgres_service import PostgresService
 
 import logging
 import os
@@ -94,7 +94,7 @@ class StripeService:
     def handle_webhook_event(
             self,
             request: Request,
-            db_service: DatabaseService,
+            postgres_service: PostgresService,
             stripe_signature: str = Header(None)
     ):
         """Handle incoming Stripe webhook events"""
@@ -114,19 +114,19 @@ class StripeService:
         if event['type'] == 'checkout.session.completed':
             return self._handle_checkout_session(
                 data_id=_data_id,
-                db_service=db_service,
+                postgres_service=postgres_service,
                 )
         elif event['type'] == 'customer.subscription.deleted':
             return self._handle_subscription_deleted(
                 data_id=_data_id,
-                db_service=db_service,
+                postgres_service=postgres_service,
                 )
         else:
             logger.warning(f"Unhandled event type: {event['type']}")
             return {"detail": "Event could not be processed"}
         
     
-    def _handle_checkout_session(self, data_id: str, db_service: DatabaseService):
+    def _handle_checkout_session(self, data_id: str, postgres_service: PostgresService):
         """Handle checkout session completed event"""
         session_data = stripe.checkout.Session.retrieve(
             data_id,
@@ -176,7 +176,7 @@ class StripeService:
                 detail=f"Invalid product ID: {product_id}"
             )
 
-        user = user_queries.get_user_by_id(user_id=user_id, db_service=db_service)
+        user = user_queries.get_user_by_id(user_id=user_id, postgres_service=postgres_service)
         if user is None:
             ## This case can only occur, if someone opens the paymentlink without being registered
             logger.error(f"User with id '{user_id}' not found in database")
@@ -196,10 +196,10 @@ class StripeService:
             user_id=user_id,
             new_premium_level=new_premium_level,
             stripe_customer_id=stripe_customer_id,
-            db_service=db_service,
+            postgres_service=postgres_service,
         )
 
-    def _handle_subscription_deleted(self, data_id: str, db_service: DatabaseService):
+    def _handle_subscription_deleted(self, data_id: str, postgres_service: PostgresService):
         """Handle subscription deletion event"""
         subscription_data = stripe.Subscription.retrieve(data_id, api_key=self.secret_key)
         try:
@@ -228,7 +228,7 @@ class StripeService:
 
         user = user_queries.get_user_by_stripe_customer_id(
             stripe_customer_id=stripe_customer_id,
-            db_service=db_service
+            postgres_service=postgres_service
             )
         if user is None:
             logger.error(f"No user found with stripe_customer_id '{stripe_customer_id}'")
@@ -241,7 +241,7 @@ class StripeService:
             user_id=user.id,
             new_premium_level=0,
             stripe_customer_id=user.stripe_customer_id,
-            db_service=db_service,
+            postgres_service=postgres_service,
         )
 
 

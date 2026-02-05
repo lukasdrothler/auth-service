@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Request, Header
 
-from src.services.database_service import DatabaseService
+from src.services.postgres_service import PostgresService
 from src.services.stripe_service import StripeService
-from src.dependencies import CurrentActiveUser, get_database_service, get_stripe_service
+from src.dependencies import CurrentActiveUser, get_postgres_service, get_stripe_service
 
 import logging
 
@@ -19,12 +19,12 @@ router = APIRouter()
 async def stripe_webhook_received(
     request: Request,
     stripe_signature=Header(None),
-    db_service: DatabaseService = Depends(get_database_service),
+    postgres_service: PostgresService = Depends(get_postgres_service),
     stripe_service: StripeService = Depends(get_stripe_service),
 ):
     return await stripe_service.handle_webhook_event(
         request=request,
-        db_service=db_service,
+        postgres_service=postgres_service,
         stripe_signature=stripe_signature,
         )
 
