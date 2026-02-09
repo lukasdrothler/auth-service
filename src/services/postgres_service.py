@@ -252,7 +252,7 @@ DROP TABLE IF EXISTS "verification_code";
 DROP TABLE IF EXISTS "user";
 
 CREATE TABLE "user" (
-  "id" varchar(40) NOT NULL DEFAULT gen_random_uuid()::text,
+  "id" varchar(36) NOT NULL DEFAULT gen_random_uuid()::text,
   "username" varchar(255) NOT NULL,
   "email" varchar(255) NOT NULL,
   "premium_level" int DEFAULT 0,
