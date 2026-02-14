@@ -47,9 +47,9 @@ PORT=8007
 # Database
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-DB_USER=your_user
-DB_PASSWORD=your_password
-DB_NAME=auth
+POSTGRES_USER=your_user
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB_NAME=auth
 
 # Stripe (optional)
 STRIPE_SECRET_API_KEY=sk_test_xxxxx
