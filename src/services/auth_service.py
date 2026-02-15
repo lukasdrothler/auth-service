@@ -154,7 +154,7 @@ class AuthService:
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
-        if not user.hashed_password:
+        if not user.hashed_password or user.hashed_password.strip() == "":
             raise HTTPException(
                 status_code=status.HTTP_417_EXPECTATION_FAILED,
                 detail="User does not have a password set"
