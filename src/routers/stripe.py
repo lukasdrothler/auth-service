@@ -11,9 +11,6 @@ logger = logging.getLogger(__name__)
 """Create user management router with dependency injection"""
 router = APIRouter()
 
-## TODO: This should work when auth service is directly called by stripe.
-## This microservice would be called by gateway api in the current architecture.
-## Rethink architecture, maybe separate microservice for webhooks or move logic to gateway api.
 
 @router.post("/stripe-webhook", tags=["stripe"])
 async def stripe_webhook_received(
