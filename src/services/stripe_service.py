@@ -245,7 +245,7 @@ class StripeService:
         )
 
 
-    async def create_customer_portal_session(self, customer_id: str, locale: str = 'auto'):
+    def create_customer_portal_session(self, customer_id: str, locale: str = 'auto'):
         """Create a customer portal session for managing subscriptions"""
         if not self.is_active:
             raise HTTPException(

@@ -33,7 +33,7 @@ async def create_customer_portal_session(
     stripe_service: StripeService = Depends(get_stripe_service),
 ):
     locale = request.headers.get('Accept-Language', 'auto')
-    return await stripe_service.create_customer_portal_session(
+    return stripe_service.create_customer_portal_session(
         customer_id=current_user.stripe_customer_id,
         locale=locale
     )
