@@ -69,14 +69,14 @@ class StripeService:
         return None
 
 
-    def _get_constructed_event(self, request: Request, stripe_signature = Header(None),):
+    async def _get_constructed_event(self, request: Request, stripe_signature = Header(None),):
         if not self.is_active:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Stripe service is not active. Please contact support."
             )
         
-        _payload = request.body()
+        _payload = await request.body()
         try:
             return stripe.Webhook.construct_event(
                 payload=_payload,
@@ -91,14 +91,14 @@ class StripeService:
                 detail=f"Invalid event from Stripe"
             )
 
-    def handle_webhook_event(
+    async def handle_webhook_event(
             self,
             request: Request,
             postgres_service: PostgresService,
             stripe_signature: str = Header(None)
     ):
         """Handle incoming Stripe webhook events"""
-        event = self._get_constructed_event(request=request, stripe_signature=stripe_signature)
+        event = await self._get_constructed_event(request=request, stripe_signature=stripe_signature)
         
         try:
             _data = event["data"]["object"]
