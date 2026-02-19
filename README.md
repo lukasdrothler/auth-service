@@ -9,7 +9,6 @@ A FastAPI microservice for user authentication and management with JWT token-bas
 - **Email Verification**: 6-digit verification codes for new accounts and email changes
 - **Password Management**: Password changes and forgot password recovery flow
 - **User Management**: Profile updates and admin user management endpoints
-- **Stripe Integration**: Subscription management with webhooks and customer portal
 - **CORS Support**: Configurable cross-origin resource sharing
 - **MySQL Database**: Persistent storage for users and verification codes
 
@@ -51,28 +50,12 @@ POSTGRES_USER=your_user
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB_NAME=auth
 
-# Stripe (optional)
-STRIPE_SECRET_API_KEY=sk_test_xxxxx
-STRIPE_SIGNING_SECRET=whsec_xxxxx
-STRIPE_CONFIG_FILE=path/to/stripe_config.json
-
 ```
 
-4. **Configure Stripe** (optional):
-Create a `stripe_config.json` file mapping Stripe product IDs to premium levels:
-```json
-{
-  "product_id_to_premium_level": {
-    "prod_xxxxx": 1,
-    "prod_yyyyy": 2
-  }
-}
-```
-
-5. **Database setup**:
+4. **Database setup**:
 Create the required MySQL database and tables. The service expects `users` and `verification_codes` tables (schema based on models in `src/models.py`).
 
-6. **Run the service**:
+5. **Run the service**:
 ```bash
 python main.py
 ```
@@ -101,10 +84,6 @@ python main.py
 ### Admin Endpoints (requires admin role)
 - `GET /user/all` - List all users
 - `DELETE /user/{user_id}` - Delete user by ID
-
-### Stripe Integration
-- `POST /stripe-webhook` - Handle Stripe webhook events (checkout completion, subscription changes)
-- `POST /create-customer-portal-session` - Create Stripe customer portal session for subscription management
 
 
 ## Docker Deployment

@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -7,7 +6,7 @@ from contextlib import asynccontextmanager
 from src.dependencies import setup_dependencies
 import src.routers.token as token
 import src.routers.user as user
-import src.routers.stripe as stripe
+import src.routers.internal as internal
 
 import os
 import logging
@@ -65,7 +64,10 @@ app.add_middleware(
 
 app.include_router(token.router)
 app.include_router(user.router)
-app.include_router(stripe.router)
+
+# Exclude internal endpoints only if explicitly disabled via env variable
+if os.getenv("DISABLE_INTERNAL_ENDPOINTS", "false").lower() not in ("true", "1"):
+    app.include_router(internal.router)
 
 
 if __name__ == "__main__":

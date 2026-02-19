@@ -8,7 +8,6 @@ from fastapi.security import OAuth2PasswordBearer
 from src.models import UserInDB
 from src.services.postgres_service import PostgresService
 from src.services.auth_service import AuthService
-from src.services.stripe_service import StripeService
 from src.services.rmq_service import RabbitMQService
 
 
@@ -56,11 +55,6 @@ def create_postgres_service() -> PostgresService:
     return PostgresService()
 
 
-def create_stripe_service() -> StripeService:
-    """Factory function to create StripeService instance"""
-    return StripeService()
-
-
 def create_rmq_service() -> RabbitMQService:
     """Factory function to create RabbitMQService instance"""
     return RabbitMQService()
@@ -95,7 +89,6 @@ def setup_dependencies(
     
     # Register singleton instances
     container.register_singleton("postgres_service", create_postgres_service())
-    container.register_singleton("stripe_service", create_stripe_service())
     container.register_singleton("rmq_service", create_rmq_service())
 
     # Register AuthService singleton instance
@@ -124,11 +117,6 @@ def get_auth_service() -> AuthService:
 def get_postgres_service() -> PostgresService:
     """FastAPI dependency function to get PostgresService instance"""
     return container.get("postgres_service")
-
-
-def get_stripe_service() -> StripeService:
-    """FastAPI dependency function to get StripeService instance"""
-    return container.get("stripe_service")
 
 
 # Create OAuth2 scheme with correct token URL
