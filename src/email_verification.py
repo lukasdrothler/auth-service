@@ -4,13 +4,13 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException, status
 
-from src.services.rmq_service import RabbitMQService
-from src.services.auth_service import AuthService
+from src.managers.rabbitmq import RabbitMQManager
+from src.managers.auth import AuthManager
 from src.models import UpdateForgottenPassword, UserInDB, VerifyEmailRequest
-from src.services.postgres_service import PostgresService
+from src.managers.postgres import PostgresManager
 from src import user_queries, verification_code_queries, user_validators
 
-def _check_verification_code(user: Optional[UserInDB], code: str, postgres_service: PostgresService) -> UserInDB:
+def _check_verification_code(user: Optional[UserInDB], code: str, pg_manager: PostgresManager) -> UserInDB:
     """Check if verification code is valid, not used and not expired"""
     if not user:
         raise HTTPException(
@@ -19,7 +19,7 @@ def _check_verification_code(user: Optional[UserInDB], code: str, postgres_servi
         )
 
     verification_record = verification_code_queries.get_verification_code_by_user_id(
-        user_id=user.id, postgres_service=postgres_service
+        user_id=user.id, pg_manager=pg_manager
         )
     
     if not verification_record:
@@ -53,27 +53,27 @@ def _check_verification_code(user: Optional[UserInDB], code: str, postgres_servi
     return None
 
 
-def _use_verification_code(user_id: str, postgres_service: PostgresService) -> None:
+def _use_verification_code(user_id: str, pg_manager: PostgresManager) -> None:
     """Mark verification code as used and update user's email verified status"""
-    verification_code_queries.mark_verification_code_as_used(user_id=user_id, postgres_service=postgres_service)
-    verification_code_queries.update_user_email_verified_status(user_id=user_id, verified=True, postgres_service=postgres_service)
+    verification_code_queries.mark_verification_code_as_used(user_id=user_id, pg_manager=pg_manager)
+    verification_code_queries.update_user_email_verified_status(user_id=user_id, verified=True, pg_manager=pg_manager)
     return None
 
 
 
-def verify_user_email_with_code(verify_request: VerifyEmailRequest, postgres_service: PostgresService, ) -> bool:
+def verify_user_email_with_code(verify_request: VerifyEmailRequest, pg_manager: PostgresManager, ) -> bool:
     """Verify user email using 6-digit code"""
 
-    user = user_queries.get_user_by_email(verify_request.email, postgres_service=postgres_service)
+    user = user_queries.get_user_by_email(verify_request.email, pg_manager=pg_manager)
     _check_verification_code(
         user=user,
         code=verify_request.code,
-        postgres_service=postgres_service,
+        pg_manager=pg_manager,
     )
 
     _use_verification_code(
         user_id=user.id,
-        postgres_service=postgres_service
+        pg_manager=pg_manager
     )
     
     return {"detail": "Email verified successfully!"}
@@ -81,13 +81,13 @@ def verify_user_email_with_code(verify_request: VerifyEmailRequest, postgres_ser
 
 def resend_verification_code(
         email: str, 
-        postgres_service: PostgresService, 
-        auth_service: AuthService,
-        rmq_service: RabbitMQService,
+        pg_manager: PostgresManager, 
+        auth_manager: AuthManager,
+        rmq_manager: RabbitMQManager,
         ) -> dict:
     """Resend verification code to user's email"""
     user_validators.validate_email_format(email)
-    user = user_queries.get_user_by_email(email=email, postgres_service=postgres_service)
+    user = user_queries.get_user_by_email(email=email, pg_manager=pg_manager)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -100,12 +100,12 @@ def resend_verification_code(
             detail="Email is already verified"
         )
     
-    verification_code = auth_service.create_verification_code_for_user(
+    verification_code = auth_manager.create_verification_code_for_user(
         user_id=user.id,
-        postgres_service=postgres_service,
+        pg_manager=pg_manager,
         )
 
-    rmq_service.publish_verify_mail_request(
+    rmq_manager.publish_verify_mail_request(
             username=user.username,
             verification_code=verification_code,
             recipient=email
@@ -116,18 +116,18 @@ def resend_verification_code(
 
 def send_forgot_password_verification(
         email: str,
-        postgres_service: PostgresService,
-        auth_service: AuthService,
-        rmq_service: RabbitMQService,
+        pg_manager: PostgresManager,
+        auth_manager: AuthManager,
+        rmq_manager: RabbitMQManager,
     ) -> dict:
 
-    user = user_queries.get_user_by_email(email=email, postgres_service=postgres_service)
-    verification_code = auth_service.create_verification_code_for_user(
+    user = user_queries.get_user_by_email(email=email, pg_manager=pg_manager)
+    verification_code = auth_manager.create_verification_code_for_user(
         user_id=user.id,
-        postgres_service=postgres_service,
+        pg_manager=pg_manager,
         )
 
-    rmq_service.publish_forgot_password_verification_request(
+    rmq_manager.publish_forgot_password_verification_request(
             username=user.username,
             verification_code=verification_code,
             recipient=email
@@ -138,9 +138,9 @@ def send_forgot_password_verification(
 def send_email_change_verification(
         user: UserInDB,
         new_email: str,
-        postgres_service: PostgresService,
-        auth_service: AuthService,
-        rmq_service: RabbitMQService,
+        pg_manager: PostgresManager,
+        auth_manager: AuthManager,
+        rmq_manager: RabbitMQManager,
         ) -> dict:
     """Initiate email change process by sending verification code to new email"""
 
@@ -152,14 +152,14 @@ def send_email_change_verification(
         )
 
     user_validators.validate_email_format(new_email)
-    user_validators.validate_email_unique(new_email, postgres_service)
+    user_validators.validate_email_unique(new_email, pg_manager)
 
-    verification_code = auth_service.create_verification_code_for_user(
+    verification_code = auth_manager.create_verification_code_for_user(
         user_id=user.id,
-        postgres_service=postgres_service,
+        pg_manager=pg_manager,
         )
     
-    rmq_service.publish_email_change_verification_request(
+    rmq_manager.publish_email_change_verification_request(
             username=user.username,
             verification_code=verification_code,
             recipient=new_email
@@ -168,49 +168,49 @@ def send_email_change_verification(
     return {"detail": "A verification code has been sent to your new email address."}
 
 
-def verify_user_email_change(user: UserInDB, verify_request: VerifyEmailRequest, postgres_service: PostgresService) -> dict:
+def verify_user_email_change(user: UserInDB, verify_request: VerifyEmailRequest, pg_manager: PostgresManager) -> dict:
     """Verify email change using 6-digit code and update user's email"""
     _check_verification_code(
         user=user,
         code=verify_request.code,
-        postgres_service=postgres_service,
+        pg_manager=pg_manager,
     )
     
     user_validators.validate_email_format(verify_request.email)
-    user_validators.validate_email_unique(verify_request.email, postgres_service)
-    verification_code_queries.update_user_email(user.id, verify_request.email, postgres_service)
+    user_validators.validate_email_unique(verify_request.email, pg_manager)
+    verification_code_queries.update_user_email(user.id, verify_request.email, pg_manager)
     
-    _use_verification_code(user.id, postgres_service)
+    _use_verification_code(user.id, pg_manager)
     
     return {"detail": "Email address updated successfully"}
 
 
-def verify_forgot_password_with_code(verify_request: VerifyEmailRequest, postgres_service: PostgresService) -> dict:
+def verify_forgot_password_with_code(verify_request: VerifyEmailRequest, pg_manager: PostgresManager) -> dict:
     """Verify forgot password request using 6-digit code"""
-    user = user_queries.get_user_by_email(email=verify_request.email, postgres_service=postgres_service)
-    _check_verification_code(user, verify_request.code, postgres_service)
+    user = user_queries.get_user_by_email(email=verify_request.email, pg_manager=pg_manager)
+    _check_verification_code(user, verify_request.code, pg_manager)
 
     # Do not mark code as used yet, this will be done after password is updated
-    # _use_verification_code (user.id, postgres_service)
+    # _use_verification_code (user.id, pg_manager)
     
     return {"detail": "E-Mail successfully verified. You can now reset your password."}
 
 
 def update_forgotten_password_with_code(
         update_forgotten_password: UpdateForgottenPassword,
-        auth_service: AuthService,
-        postgres_service: PostgresService,
+        auth_manager: AuthManager,
+        pg_manager: PostgresManager,
     ) -> dict:
     """Update forgotten password using verification code"""
-    user = user_queries.get_user_by_email(update_forgotten_password.email, postgres_service)
-    _check_verification_code(user, update_forgotten_password.verification_code, postgres_service)
+    user = user_queries.get_user_by_email(update_forgotten_password.email, pg_manager)
+    _check_verification_code(user, update_forgotten_password.verification_code, pg_manager)
 
-    _use_verification_code(user.id, postgres_service)
+    _use_verification_code(user.id, pg_manager)
 
-    auth_service.update_password(
+    auth_manager.update_password(
         user_id=user.id,
         new_password=update_forgotten_password.new_password,
-        postgres_service=postgres_service,
+        pg_manager=pg_manager,
     )
     
     return {"detail": "Password updated successfully"}

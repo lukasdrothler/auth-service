@@ -1,5 +1,5 @@
 from src.models import CreateVerificationCodeResponse, UserInDB, CreateUser, UpdateUser, UpdatePassword, Token, TokenData
-from src.services.postgres_service import PostgresService
+from src.managers.postgres import PostgresManager
 
 from src import user_queries, verification_code_queries, user_validators
 
@@ -20,8 +20,8 @@ import secrets
 
 logger = logging.getLogger(__name__)
 
-class AuthService:
-    """Service for handling authentication-related operations"""
+class AuthManager:
+    """Manager for handling authentication-related operations"""
     
     def __init__(self,
                  access_token_expire_minutes=30,
@@ -99,7 +99,7 @@ class AuthService:
         return self.password_hash.hash(password)
 
 
-    def create_bearer_token(self, user: UserInDB, postgres_service: PostgresService, is_refresh: bool = False) -> str:
+    def create_bearer_token(self, user: UserInDB, pg_manager: PostgresManager, is_refresh: bool = False) -> str:
         """Create a JWT token"""
         data = {
             "sub": user.id,
@@ -124,7 +124,7 @@ class AuthService:
         encoded_jwt = jwt.encode(to_encode, self.private_key, algorithm=self.algorithm)
         user_queries.update_user_last_seen(
             user_id=user.id,
-            postgres_service=postgres_service
+            pg_manager=pg_manager
             )
         return encoded_jwt
 
@@ -133,18 +133,18 @@ class AuthService:
             self,
             username_or_email: str,
             password: str,
-            postgres_service: PostgresService
+            pg_manager: PostgresManager
         ) -> UserInDB:
         """Authenticate a user"""
         user = None
         user = user_queries.get_user_by_username(
             username=username_or_email,
-            postgres_service=postgres_service
+            pg_manager=pg_manager
             )
         if not user:
             user = user_queries.get_user_by_email(
                 email=username_or_email,
-                postgres_service=postgres_service
+                pg_manager=pg_manager
                 )
             if not user:
                 logger.error(f"Could not find user with username or email '{username_or_email}'")
@@ -181,24 +181,24 @@ class AuthService:
             self,
             username_or_email: str,
             password: str,
-            postgres_service: PostgresService,
+            pg_manager: PostgresManager,
             stay_logged_in: bool = False
             ) -> Token:
         
         user = self.authenticate_user(
             username_or_email=username_or_email,
             password=password,
-            postgres_service=postgres_service
+            pg_manager=pg_manager
             )
         
         access_token = self.create_bearer_token(
             user=user,
-            postgres_service=postgres_service
+            pg_manager=pg_manager
             )
         if stay_logged_in:
             refresh_token = self.create_bearer_token(
                 user=user,
-                postgres_service=postgres_service,
+                pg_manager=pg_manager,
                 is_refresh=True)
             return Token(access_token=access_token, refresh_token=refresh_token)
         
@@ -208,7 +208,7 @@ class AuthService:
     def refresh_access_token(
             self,
             refresh_token: str,
-            postgres_service: PostgresService
+            pg_manager: PostgresManager
             ) -> Token:
         """Refresh an access token using a refresh token"""
         credentials_exception = HTTPException(
@@ -227,13 +227,13 @@ class AuthService:
             raise credentials_exception
         
         # Get and validate current user
-        user = user_queries.get_user_by_id(token_data.user_id, postgres_service=postgres_service)
+        user = user_queries.get_user_by_id(token_data.user_id, pg_manager=pg_manager)
         if user is None or user.disabled:
             raise credentials_exception
         
         access_token = self.create_bearer_token(
             user=user,
-            postgres_service=postgres_service
+            pg_manager=pg_manager
             )
         return Token(access_token=access_token)
     
@@ -241,9 +241,9 @@ class AuthService:
         """Generate a 6-digit verification code"""
         return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
-    def check_can_send_verification(self, user_id: str, postgres_service: PostgresService) -> None:
+    def check_can_send_verification(self, user_id: str, pg_manager: PostgresManager) -> None:
         """Check if user can resend verification code (30 seconds cooldown)"""
-        existing_code = verification_code_queries.get_verification_code_by_user_id(user_id, postgres_service)
+        existing_code = verification_code_queries.get_verification_code_by_user_id(user_id, pg_manager)
 
         if not existing_code:
             return None
@@ -262,37 +262,37 @@ class AuthService:
             )
         return None
 
-    def create_verification_code_for_user(self, user_id: str, postgres_service: PostgresService) -> str:
+    def create_verification_code_for_user(self, user_id: str, pg_manager: PostgresManager) -> str:
         """Create or update regular verification code for user"""
-        self.check_can_send_verification(user_id, postgres_service)
+        self.check_can_send_verification(user_id, pg_manager)
         
         new_code = self.generate_verification_code()
         
         verification_code_queries.upsert_verification_code(
             user_id=user_id,
             code=new_code,
-            postgres_service=postgres_service
+            pg_manager=pg_manager
         )
         return new_code
 
-    def register_new_user(self, user: CreateUser, postgres_service: PostgresService) -> CreateVerificationCodeResponse:
+    def register_new_user(self, user: CreateUser, pg_manager: PostgresManager) -> CreateVerificationCodeResponse:
         """Create a new user"""
-        user_validators.validate_new_user(user, postgres_service)
+        user_validators.validate_new_user(user, pg_manager)
         hashed_password = self.get_password_hash(user.password)
         
         user_queries.create_user(
             username=user.username,
             email=user.email,
             hashed_password=hashed_password,
-            postgres_service=postgres_service,
+            pg_manager=pg_manager,
         )
         
-        created_user = user_queries.get_user_by_username(user.username, postgres_service)
+        created_user = user_queries.get_user_by_username(user.username, pg_manager)
 
         # Generate 6-digit verification code
         verification_code = self.create_verification_code_for_user(
             user_id=created_user.id,
-            postgres_service=postgres_service,
+            pg_manager=pg_manager,
         )
 
         return CreateVerificationCodeResponse(
@@ -301,21 +301,21 @@ class AuthService:
             value=verification_code
         )
     
-    def resend_verification_code(self, email: str, postgres_service: PostgresService) -> CreateVerificationCodeResponse:
+    def resend_verification_code(self, email: str, pg_manager: PostgresManager) -> CreateVerificationCodeResponse:
         """Resend verification code to user's email"""
-        user = user_queries.get_user_by_email(email, postgres_service)
+        user = user_queries.get_user_by_email(email, pg_manager)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User with the specified email not found"
             )
         
-        self.check_can_send_verification(user.id, postgres_service)
+        self.check_can_send_verification(user.id, pg_manager)
         
         # Generate new verification code
         verification_code = self.create_verification_code_for_user(
             user_id=user.id,
-            postgres_service=postgres_service,
+            pg_manager=pg_manager,
         )
         
         return CreateVerificationCodeResponse(
@@ -325,7 +325,7 @@ class AuthService:
         )
 
 
-    def get_current_user(self, token: str, postgres_service: PostgresService) -> UserInDB:
+    def get_current_user(self, token: str, pg_manager: PostgresManager) -> UserInDB:
         """Get current user from JWT token"""
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -342,7 +342,7 @@ class AuthService:
         except jwt.InvalidTokenError:
             raise credentials_exception
             
-        user = user_queries.get_user_by_id(user_id, postgres_service=postgres_service)
+        user = user_queries.get_user_by_id(user_id, pg_manager=pg_manager)
         if user is None:
             logger.error(f"User with ID '{user_id}' not found")
             raise credentials_exception
@@ -373,19 +373,19 @@ class AuthService:
             self,
             user_id: str,
             user_update: UpdateUser,
-            postgres_service: PostgresService
+            pg_manager: PostgresManager
             ) -> dict:
         """Update user information"""
         # Get current user to verify they exist
-        current_user = user_queries.get_user_by_id(user_id, postgres_service=postgres_service)
+        current_user = user_queries.get_user_by_id(user_id, pg_manager=pg_manager)
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
 
-        user_validators.validate_user_update(user_update, postgres_service)
-        fields_updated = user_queries.update_user_fields(user_id, user_update, postgres_service=postgres_service)
+        user_validators.validate_user_update(user_update, pg_manager)
+        fields_updated = user_queries.update_user_fields(user_id, user_update, pg_manager=pg_manager)
         
         if not fields_updated:
             return {"detail": "No changes were made"}
@@ -403,13 +403,13 @@ class AuthService:
     def update_password(
             self,
             user_id: str,
-            postgres_service: PostgresService,
+            pg_manager: PostgresManager,
             password_update: Optional[UpdatePassword] = None,
             new_password: Optional[str] = None
             ) -> dict:
         """Update user password"""
         # Get current user to verify they exist and get their current password
-        current_user = user_queries.get_user_by_id(user_id, postgres_service=postgres_service)
+        current_user = user_queries.get_user_by_id(user_id, pg_manager=pg_manager)
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -438,7 +438,7 @@ class AuthService:
             user_queries.update_user_password(
                 user_id=user_id, 
                 hashed_password=new_hashed_password, 
-                postgres_service=postgres_service)
+                pg_manager=pg_manager)
             return {"detail": "Password updated successfully"}
         except Exception as e:
             logger.error(f"Error updating password: {e}")

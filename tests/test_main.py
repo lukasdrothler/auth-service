@@ -3,7 +3,7 @@ from main import app
 import pytest
 
 @pytest.fixture
-def client(postgres_service, rmq_service):
+def client(pg_manager, rmq_manager):
     with TestClient(app) as c:
         yield c
 

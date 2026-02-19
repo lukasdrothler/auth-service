@@ -7,12 +7,12 @@ from typing import Optional, Dict, Any, List, Tuple
 logger = logging.getLogger(__name__)
 
 
-class PostgresService:
-    """Database service for PostgreSQL operations"""
+class PostgresManager:
+    """Database Manager for PostgreSQL operations"""
 
 
     def __init__(self):
-        """Initialize the database service with environment variables"""
+        """Initialize the database Manager with environment variables"""
         if "POSTGRES_HOST" in os.environ:
             self.host = os.environ["POSTGRES_HOST"]
             logger.info(f"Using database host '{self.host}' from environment variable 'POSTGRES_HOST'")
@@ -48,7 +48,7 @@ class PostgresService:
             self.db_name = "auth"
             logger.warning(f"Using database name '{self.db_name}' since 'POSTGRES_DB_NAME' not set")
 
-        logger.info("PostgresService initialized. Trying to connect to database...")
+        logger.info("PostgresManager initialized. Trying to connect to database...")
         if not self.db_connection_works():
             logger.info(f"Database '{self.db_name}' does not exist. Creating and initializing...")
             self.execute_init_db_sql()

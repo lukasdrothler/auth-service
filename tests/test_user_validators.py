@@ -46,68 +46,68 @@ def test_validate_password_strength_no_number():
         user_validators.validate_password_strength("Password")
     assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
 
-def test_validate_username_unique(postgres_service):
+def test_validate_username_unique(pg_manager):
     # Create a user first
-    user_queries.create_user("existing_user", "existing@example.com", "hashed_pw", postgres_service)
+    user_queries.create_user("existing_user", "existing@example.com", "hashed_pw", pg_manager)
     
     # Test with existing username
     with pytest.raises(HTTPException) as exc_info:
-        user_validators.validate_username_unique("existing_user", postgres_service)
+        user_validators.validate_username_unique("existing_user", pg_manager)
     assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
     # Test with new username
-    user_validators.validate_username_unique("new_user", postgres_service)
+    user_validators.validate_username_unique("new_user", pg_manager)
 
-def test_validate_email_unique(postgres_service):
+def test_validate_email_unique(pg_manager):
     # Create a user first
-    user_queries.create_user("existing_user_email", "existing_email@example.com", "hashed_pw", postgres_service)
+    user_queries.create_user("existing_user_email", "existing_email@example.com", "hashed_pw", pg_manager)
     
     # Test with existing email
     with pytest.raises(HTTPException) as exc_info:
-        user_validators.validate_email_unique("existing_email@example.com", postgres_service)
+        user_validators.validate_email_unique("existing_email@example.com", pg_manager)
     assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
     # Test with new email
-    user_validators.validate_email_unique("new_email@example.com", postgres_service)
+    user_validators.validate_email_unique("new_email@example.com", pg_manager)
 
-def test_validate_new_user(postgres_service):
+def test_validate_new_user(pg_manager):
     # Valid user
     valid_user = CreateUser(
         username="new_valid_user",
         email="new_valid@example.com",
         password="Password123"
     )
-    user_validators.validate_new_user(valid_user, postgres_service)
+    user_validators.validate_new_user(valid_user, pg_manager)
 
     # Duplicate username
-    user_queries.create_user("dup_user", "dup@example.com", "hashed_pw", postgres_service)
+    user_queries.create_user("dup_user", "dup@example.com", "hashed_pw", pg_manager)
     invalid_user = CreateUser(
         username="dup_user",
         email="another@example.com",
         password="Password123"
     )
     with pytest.raises(HTTPException) as exc_info:
-        user_validators.validate_new_user(invalid_user, postgres_service)
+        user_validators.validate_new_user(invalid_user, pg_manager)
     assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
-def test_validate_user_update(postgres_service):
+def test_validate_user_update(pg_manager):
     # Create a user to conflict with
-    user_queries.create_user("conflict_user", "conflict@example.com", "hashed_pw", postgres_service)
+    user_queries.create_user("conflict_user", "conflict@example.com", "hashed_pw", pg_manager)
     
     # Valid update (no conflict)
     update_valid = UpdateUser(username="new_unique_name")
-    user_validators.validate_user_update(update_valid, postgres_service)
+    user_validators.validate_user_update(update_valid, pg_manager)
 
     # Invalid update (conflict)
     update_conflict = UpdateUser(username="conflict_user")
     with pytest.raises(HTTPException) as exc_info:
-        user_validators.validate_user_update(update_conflict, postgres_service)
+        user_validators.validate_user_update(update_conflict, pg_manager)
     assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
-def test_validate_new_password(auth_service):
-    password_hash = auth_service.password_hash
+def test_validate_new_password(auth_manager):
+    password_hash = auth_manager.password_hash
     current_password = "OldPassword123"
-    current_hashed = auth_service.get_password_hash(current_password)
+    current_hashed = auth_manager.get_password_hash(current_password)
     
     # Valid update
     update = UpdatePassword(current_password=current_password, new_password="NewPassword123")

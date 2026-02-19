@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.services.postgres_service import PostgresService
-from src.dependencies import get_postgres_service
+from src.managers.postgres import PostgresManager
+from src.dependencies import get_pg_manager
 from src.models import UserInDBNoPassword, UpdateUserPremiumLevel
 from src import user_queries
 
@@ -10,17 +10,17 @@ router = APIRouter()
 def get_user_internal(
     user_id: str = None,
     stripe_customer_id: str = None,
-    postgres_service: PostgresService = Depends(get_postgres_service),
+    pg_manager: PostgresManager = Depends(get_pg_manager),
 ):
     """Get user by ID or Stripe Customer ID for internal use"""
     if user_id:
-        user = user_queries.get_user_by_id(user_id=user_id, postgres_service=postgres_service)
+        user = user_queries.get_user_by_id(user_id=user_id, pg_manager=pg_manager)
         if user and stripe_customer_id and user.stripe_customer_id != stripe_customer_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found with matching criteria")
     elif stripe_customer_id:
         user = user_queries.get_user_by_stripe_customer_id(
             stripe_customer_id=stripe_customer_id,
-            postgres_service=postgres_service
+            pg_manager=pg_manager
         )
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Either user_id or stripe_customer_id must be provided")
@@ -34,12 +34,12 @@ def get_user_internal(
 def update_user_premium_level_internal(
     user_id: str,
     update_data: UpdateUserPremiumLevel,
-    postgres_service: PostgresService = Depends(get_postgres_service),
+    pg_manager: PostgresManager = Depends(get_pg_manager),
 ):
     """Update user premium level for internal use"""
     return user_queries.update_user_premium_level(
         user_id=user_id,
         new_premium_level=update_data.new_premium_level,
         stripe_customer_id=update_data.stripe_customer_id,
-        postgres_service=postgres_service,
+        pg_manager=pg_manager,
     )

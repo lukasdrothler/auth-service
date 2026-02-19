@@ -3,9 +3,9 @@ import pytest
 from dotenv import load_dotenv
 from testcontainers.postgres import PostgresContainer
 from testcontainers.rabbitmq import RabbitMqContainer
-from src.services.postgres_service import PostgresService
-from src.services.auth_service import AuthService
-from src.services.rmq_service import RabbitMQService
+from src.managers.postgres import PostgresManager
+from src.managers.auth import AuthManager
+from src.managers.rabbitmq import RabbitMQManager
 
 # Load environment variables from .env file
 load_dotenv()
@@ -34,9 +34,9 @@ def rabbitmq_container():
         yield rabbitmq
 
 @pytest.fixture(scope="function")
-def postgres_service(postgres_container):
+def pg_manager(postgres_container):
     """
-    Fixture to provide a PostgresService instance connected to a test database.
+    Fixture to provide a PostgresManager instance connected to a test database.
     This fixture ensures the test database is initialized and clean before each test.
     """
     old_environ = os.environ.copy()
@@ -47,7 +47,7 @@ def postgres_service(postgres_container):
     os.environ["POSTGRES_PASSWORD"] = postgres_container.password
     os.environ["POSTGRES_DB_NAME"] = postgres_container.dbname
 
-    service = PostgresService()
+    service = PostgresManager()
 
     # Re-initialize the database schema to ensure a clean state for each test
     service.execute_init_db_sql()
@@ -60,9 +60,9 @@ def postgres_service(postgres_container):
 
 
 @pytest.fixture(scope="session")
-def rmq_service(rabbitmq_container):
+def rmq_manager(rabbitmq_container):
     """
-    Fixture to provide a RabbitMQService instance.
+    Fixture to provide a RabbitMQManager instance.
     This service is stateless and can be shared across tests.
     """
     old_environ = os.environ.copy()
@@ -72,7 +72,7 @@ def rmq_service(rabbitmq_container):
     os.environ["RABBITMQ_PASSWORD"] = rabbitmq_container.password
     os.environ["RABBITMQ_MAIL_QUEUE_NAME"] = "test-mail-queue"
     
-    service = RabbitMQService()
+    service = RabbitMQManager()
     yield service
     
     # Restore old environment variables
@@ -82,9 +82,9 @@ def rmq_service(rabbitmq_container):
 
 
 @pytest.fixture(scope="session")
-def auth_service():
+def auth_manager():
     """
-    Fixture to provide an AuthService instance.
+    Fixture to provide an AuthManager instance.
     This service is stateless and can be shared across tests.
     """
-    return AuthService()
+    return AuthManager()

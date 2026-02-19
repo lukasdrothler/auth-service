@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 
 from src.models import CreateUser, UpdateUser, UpdatePassword
-from src.services.postgres_service import PostgresService
+from src.managers.postgres import PostgresManager
 from src import user_queries
 
 import re
@@ -40,9 +40,9 @@ def validate_password_strength(password: str) -> None:
         )
 
 
-def validate_username_unique(username: str, postgres_service: PostgresService) -> None:
+def validate_username_unique(username: str, pg_manager: PostgresManager) -> None:
     """Validate that username is unique (excluding current user if updating)"""
-    existing_user = user_queries.get_user_by_username(username, postgres_service)
+    existing_user = user_queries.get_user_by_username(username, pg_manager)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -50,10 +50,10 @@ def validate_username_unique(username: str, postgres_service: PostgresService) -
         )
 
 
-def validate_email_unique(email: str, postgres_service: PostgresService) -> None:
+def validate_email_unique(email: str, pg_manager: PostgresManager) -> None:
     """Validate that email is unique (excluding current user if updating)"""
     
-    existing_user = user_queries.get_user_by_email(email, postgres_service)
+    existing_user = user_queries.get_user_by_email(email, pg_manager)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -61,20 +61,20 @@ def validate_email_unique(email: str, postgres_service: PostgresService) -> None
         )
 
 
-def validate_new_user(user: CreateUser, postgres_service: PostgresService) -> None:
+def validate_new_user(user: CreateUser, pg_manager: PostgresManager) -> None:
     """Validate all fields for new user creation"""
     validate_username_format(user.username)
     validate_email_format(user.email)
     validate_password_strength(user.password)
-    validate_username_unique(user.username, postgres_service)
-    validate_email_unique(user.email, postgres_service)
+    validate_username_unique(user.username, pg_manager)
+    validate_email_unique(user.email, pg_manager)
 
 
-def validate_user_update(user_update: UpdateUser, postgres_service: PostgresService) -> None:
+def validate_user_update(user_update: UpdateUser, pg_manager: PostgresManager) -> None:
     """Validate fields for user update"""
     if user_update.username is not None:
         validate_username_format(user_update.username)
-        validate_username_unique(user_update.username, postgres_service)
+        validate_username_unique(user_update.username, pg_manager)
 
 
 def validate_new_password(

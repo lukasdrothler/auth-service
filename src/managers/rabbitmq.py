@@ -5,7 +5,7 @@ from src.models import MailRequest
 logger = logging.getLogger(__name__)
 
 
-class RabbitMQService:
+class RabbitMQManager:
     def __init__(self):
         if "RABBITMQ_HOST" in os.environ:
             self.host = os.environ["RABBITMQ_HOST"]

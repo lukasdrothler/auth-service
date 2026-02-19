@@ -6,9 +6,10 @@ from fastapi import Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 
 from src.models import UserInDB
-from src.services.postgres_service import PostgresService
-from src.services.auth_service import AuthService
-from src.services.rmq_service import RabbitMQService
+from src.managers.postgres import PostgresManager
+from src.managers.auth import AuthManager
+from src.managers.rabbitmq import RabbitMQManager
+
 
 
 class DependencyContainer:
@@ -50,25 +51,25 @@ class DependencyContainer:
 # Global dependency container instance
 container = DependencyContainer()
 
-def create_postgres_service() -> PostgresService:
-    """Factory function to create PostgresService instance"""
-    return PostgresService()
+def create_pg_manager() -> PostgresManager:
+    """Factory function to create PostgresManager instance"""
+    return PostgresManager()
 
 
-def create_rmq_service() -> RabbitMQService:
-    """Factory function to create RabbitMQService instance"""
-    return RabbitMQService()
+def create_rmq_manager() -> RabbitMQManager:
+    """Factory function to create RabbitMQManager instance"""
+    return RabbitMQManager()
 
 
-def create_auth_service(
+def create_auth_manager(
     access_token_expire_minutes: int = 30,
     refresh_token_expire_days: int = 30,
     token_url: str = "token",  # nosec
     private_key_filename: str = "private_key.pem",
     public_key_filename: str = "public_key.pem"
 ):
-    """Factory function to create AuthService instance without dependencies"""
-    return AuthService(
+    """Factory function to create AuthManager instance without dependencies"""
+    return AuthManager(
         access_token_expire_minutes=access_token_expire_minutes,
         refresh_token_expire_days=refresh_token_expire_days,
         token_url=token_url,
@@ -88,13 +89,13 @@ def setup_dependencies(
     container.clear()
     
     # Register singleton instances
-    container.register_singleton("postgres_service", create_postgres_service())
-    container.register_singleton("rmq_service", create_rmq_service())
+    container.register_singleton("pg_manager", create_pg_manager())
+    container.register_singleton("rmq_manager", create_rmq_manager())
 
-    # Register AuthService singleton instance
+    # Register AuthManager singleton instance
     container.register_singleton(
-        "auth_service",
-        create_auth_service(
+        "auth_manager",
+        create_auth_manager(
             access_token_expire_minutes=access_token_expire_minutes,
             refresh_token_expire_days=refresh_token_expire_days,
             token_url=token_url,
@@ -104,19 +105,19 @@ def setup_dependencies(
     )
 
 
-def get_rmq_service() -> RabbitMQService:
-    """FastAPI dependency function to get RabbitMQService instance"""
-    return container.get("rmq_service")
+def get_rmq_manager() -> RabbitMQManager:
+    """FastAPI dependency function to get RabbitMQManager instance"""
+    return container.get("rmq_manager")
 
 
-def get_auth_service() -> AuthService:
-    """FastAPI dependency function to get AuthService instance"""
-    return container.get("auth_service")
+def get_auth_manager() -> AuthManager:
+    """FastAPI dependency function to get AuthManager instance"""
+    return container.get("auth_manager")
 
 
-def get_postgres_service() -> PostgresService:
-    """FastAPI dependency function to get PostgresService instance"""
-    return container.get("postgres_service")
+def get_pg_manager() -> PostgresManager:
+    """FastAPI dependency function to get PostgresManager instance"""
+    return container.get("pg_manager")
 
 
 # Create OAuth2 scheme with correct token URL
@@ -125,26 +126,26 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    auth_service = Depends(get_auth_service),
-    postgres_service: PostgresService = Depends(get_postgres_service)
+    auth_manager = Depends(get_auth_manager),
+    pg_manager: PostgresManager = Depends(get_pg_manager)
 ) -> UserInDB:
     """Dependency to get current user from JWT token"""
-    return auth_service.get_current_user(token, postgres_service=postgres_service)
+    return auth_manager.get_current_user(token, pg_manager=pg_manager)
 
 
 def get_current_active_user(
     current_user: Annotated[UserInDB, Depends(get_current_user)],
-    auth_service = Depends(get_auth_service),
+    auth_manager = Depends(get_auth_manager),
 ) -> UserInDB:
     """Dependency to get current active user"""
-    return auth_service.get_current_active_user(current_user)
+    return auth_manager.get_current_active_user(current_user)
 
 def get_current_admin_user(
     current_user: Annotated[UserInDB, Depends(get_current_active_user)],
-    auth_service = Depends(get_auth_service),
+    auth_manager = Depends(get_auth_manager),
 ) -> UserInDB:
     """Dependency to get current admin user"""
-    return auth_service.get_current_admin_user(current_user)
+    return auth_manager.get_current_admin_user(current_user)
 
 
 # Convenience type annotations for use in route handlers
