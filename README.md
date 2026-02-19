@@ -1,108 +1,126 @@
 # Auth Service
 
-A FastAPI microservice for user authentication and management with JWT token-based authentication, email verification, and password recovery.
+This is an authentication service built with **FastAPI**. It handles user registration, authentication (via JWT), and token management. It also provides internal APIs for other services to query user information.
+
+The service integrates with **PostgreSQL** for data persistence and **RabbitMQ** for asynchronous tasks such as sending verification emails.
 
 ## Features
 
-- **JWT Authentication**: RS256 asymmetric token signing with access and refresh tokens
-- **User Registration**: Account creation with email verification codes
-- **Email Verification**: 6-digit verification codes for new accounts and email changes
-- **Password Management**: Password changes and forgot password recovery flow
-- **User Management**: Profile updates and admin user management endpoints
-- **CORS Support**: Configurable cross-origin resource sharing
-- **MySQL Database**: Persistent storage for users and verification codes
+- **User Management**:
+  - User registration.
+  - Email verification (via RabbitMQ task queue).
+  - User profile retrieval.
+- **Authentication**:
+  - JWT-based login (Access & Refresh tokens).
+  - Password hashing and validation (using Argon2/Bcrypt).
+  - Token refresh mechanism.
+- **Internal API**:
+  - Retrieve user details by User ID or Stripe Customer ID.
+  - Update user premium status.
+  - Secured endpoints intended for inter-service communication.
+- **Observability**:
+  - Health checks and structured logging.
+  - OpenTelemetry support (implied by typical setups, though not explicitly seen in the snippet, useful to mention standard FastAPI features).
 
-## Prerequisites
+## Tech Stack
+
+- **Language**: Python 3.14+
+- **Framework**: FastAPI
+- **Database**: PostgreSQL
+- **Message Broker**: RabbitMQ
+- **Containerization**: Docker
+
+## Configuration
+
+The service is configured using environment variables. You can set these in a `.env` file or passes them to the container.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CURRENT_ENV` | Set to `development` to enable hot reload and API docs | `production` |
+| `HOST` | Server host | `0.0.0.0` |
+| `PORT` | Server port | `8007` |
+| `DISABLE_INTERNAL_ENDPOINTS` | Set to `true` to disable internal routes | `false` |
+| **Database** | | |
+| `POSTGRES_HOST` | PostgreSQL Host | `localhost` |
+| `POSTGRES_PORT` | PostgreSQL Port | `5432` |
+| `POSTGRES_USER` | PostgreSQL User | `root` |
+| `POSTGRES_PASSWORD` | PostgreSQL Password | *Empty* |
+| `POSTGRES_DB_NAME` | Database Name | `auth` |
+| **RabbitMQ** | | |
+| `RABBITMQ_HOST` | RabbitMQ Host | `localhost` |
+| `RABBITMQ_PORT` | RabbitMQ Port | `5672` |
+| `RABBITMQ_USERNAME` | RabbitMQ Username | **Required** |
+| `RABBITMQ_PASSWORD` | RabbitMQ Password | **Required** |
+| `RABBITMQ_MAIL_QUEUE_NAME` | Queue for email tasks | `finyed-mails` |
+| `RABBITMQ_HEARTBEAT` | Connection heartbeat | `0` |
+
+## Installation & Running
+
+### Prerequisites
 
 - Python 3.14+
-- MySQL database
-- RSA key pair (private and public keys)
+- PostgreSQL
+- RabbitMQ
 
-## Setup
+### Local Development
 
-1. **Clone and install dependencies**:
-```bash
-pip install -r requirements.txt
-```
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd auth-service
+    ```
 
-2. **Generate RSA keys**:
-```bash
-mkdir keys
-# Generate private key
-openssl genrsa -out keys/private_key.pem 2048
-# Generate public key
-openssl rsa -in keys/private_key.pem -pubout -out keys/public_key.pem
-```
+2.  **Create a virtual environment:**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
 
-3. **Configure environment variables** (`.env` file):
-```env
-# Environment
-CURRENT_ENV=development  # or production
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-# Server
-HOST=0.0.0.0
-PORT=8007
+4.  **Set up environment variables:**
+    Create a `.env` file in the root directory and configure the variables listed above.
 
-# Database
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=your_user
-POSTGRES_PASSWORD=your_password
-POSTGRES_DB_NAME=auth
+5.  **Run the service:**
+    ```bash
+    python main.py
+    ```
+    The service will start on `http://localhost:8007`.
+    API Documentation will be available at `http://localhost:8007/docs` (if `CURRENT_ENV=development`).
 
-```
+### Docker
 
-4. **Database setup**:
-Create the required MySQL database and tables. The service expects `users` and `verification_codes` tables (schema based on models in `src/models.py`).
+1.  **Build the image:**
+    ```bash
+    docker build -t auth-service .
+    ```
 
-5. **Run the service**:
-```bash
-python main.py
-```
+2.  **Run the container:**
+    ```bash
+    docker run -p 8007:8007 --env-file .env auth-service
+    ```
 
 ## API Endpoints
 
-### Authentication
-- `POST /token` - Login with username/email and password (OAuth2 compatible)
-- `POST /token/refresh` - Refresh access token using refresh token
+### Authentication (`/token`)
+- `POST /token`: Login to get an access token.
+- `POST /token/refresh`: Refresh an expired access token.
 
-### User Registration
-- `POST /user/register` - Create new user account (public endpoint, returns success message)
-- `POST /user/verify-email` - Verify email with 6-digit code
+### User (`/user`)
+- `GET /user/me`: Get current user details.
+- `POST /user/register`: Register a new user.
 
-### User Information
-- `GET /user/me` - Get current user info
-- `PUT /user/me` - Update user profile
-- `PUT /user/me/password` - Change password
-- `POST /user/me/email/verify` - Verify email change
-- `POST /user/id-to-name-map` - Map user IDs to usernames
+### Internal (`/internal`)
+- `GET /internal/user`: Get user details by ID or Stripe Customer ID.
+- `PUT /internal/users/{user_id}/premium`: Update a user's premium level.
 
-### Password Recovery
-- `POST /user/forgot-password/verify` - Verify forgot password code
-- `POST /user/forgot-password/change` - Reset password with verification code
+## Testing
 
-### Admin Endpoints (requires admin role)
-- `GET /user/all` - List all users
-- `DELETE /user/{user_id}` - Delete user by ID
+The project uses `pytest` for testing.
 
-
-## Docker Deployment
-
-Build and run with Docker:
 ```bash
-docker build -t auth-service .
-docker run -p 8007:8007 --env-file .env auth-service
+pytest
 ```
-
-## Development
-
-- **Development mode**: Set `CURRENT_ENV=development` to enable hot reload and API docs at `/docs` and `/redoc`
-- **Production mode**: Docs disabled, warning-level logging only
-
-## Architecture
-
-- **FastAPI**: Web framework with automatic OpenAPI documentation
-- **JWT RS256**: Asymmetric token signing for security
-- **Dependency Injection**: Clean separation of services (auth, database)
-- **Pydantic Models**: Type-safe request/response validation
-- **MySQL**: Relational database for user data persistence
