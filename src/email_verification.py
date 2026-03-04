@@ -122,6 +122,13 @@ def send_forgot_password_verification(
     ) -> dict:
 
     user = user_queries.get_user_by_email(email=email, pg_manager=pg_manager)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     verification_code = auth_manager.create_verification_code_for_user(
         user_id=user.id,
         pg_manager=pg_manager,
