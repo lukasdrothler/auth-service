@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 
 from src.managers.auth import AuthManager
 from src.managers.rabbitmq import RabbitMQManager
@@ -30,6 +30,15 @@ from src.dependencies import (
 
 router = APIRouter()
 
+def extract_locale_from_request(request: Request) -> str:
+    """Extract the preferred language from the Accept-Language header"""
+    accept_language = request.headers.get("Accept-Language", "en")
+    # Split the header by comma and take the first language
+    languages = [lang.strip() for lang in accept_language.split(",")]
+    if languages:
+        return languages[0]
+    return "en"
+
 @router.get("/user/me", response_model=User, tags=["user-information"])
 def read_users_me(current_user: CurrentActiveUser):
     return current_user
@@ -38,6 +47,7 @@ def read_users_me(current_user: CurrentActiveUser):
 @router.post("/user/register", status_code=201, tags=["user-registration"])
 def create_new_user(
     user: CreateUser,
+    request: Request,
     auth_manager: AuthManager = Depends(get_auth_manager),
     pg_manager: PostgresManager = Depends(get_pg_manager),
     rmq_manager: RabbitMQManager = Depends(get_rmq_manager),
@@ -47,7 +57,8 @@ def create_new_user(
     rmq_manager.publish_verify_mail_request(
             username=response.username,
             verification_code=response.value,
-            recipient=response.email
+            recipient=response.email,
+            language=extract_locale_from_request(request)
         )
 
     return {"detail": "User registered successfully. E-Mail verification request added to queue."}
@@ -68,6 +79,7 @@ def verify_user_email(
 @router.post("/user/resend-verification", status_code=200, tags=["user-registration"])
 def send_new_verification_code(
     send_verification_request: SendVerificationRequest,
+    request: Request,
     pg_manager: PostgresManager = Depends(get_pg_manager),
     auth_manager: AuthManager = Depends(get_auth_manager),
     rmq_manager: RabbitMQManager = Depends(get_rmq_manager),
@@ -76,7 +88,8 @@ def send_new_verification_code(
         email=send_verification_request.email,
         pg_manager=pg_manager,
         auth_manager=auth_manager,
-        rmq_manager=rmq_manager
+        rmq_manager=rmq_manager,
+        language=extract_locale_from_request(request)
     )
 
 
@@ -114,6 +127,7 @@ def change_user_password(
 def request_user_email_change(
     send_verification_request: SendVerificationRequest,
     current_user: CurrentActiveUser,
+    request: Request,
     pg_manager: PostgresManager = Depends(get_pg_manager),
     auth_manager: AuthManager = Depends(get_auth_manager),
     rmq_manager: RabbitMQManager = Depends(get_rmq_manager),
@@ -125,6 +139,7 @@ def request_user_email_change(
         pg_manager=pg_manager,
         auth_manager=auth_manager,
         rmq_manager=rmq_manager,
+        language=extract_locale_from_request(request)
     )
 
 
@@ -145,6 +160,7 @@ def user_email_change_verification(
 @router.post("/user/forgot-password/request", status_code=200, tags=["user-password-recovery"])
 def request_forgot_password(
     send_verification_request: SendVerificationRequest,
+    request: Request,
     pg_manager: PostgresManager = Depends(get_pg_manager),
     auth_manager: AuthManager = Depends(get_auth_manager),
     rmq_manager: RabbitMQManager = Depends(get_rmq_manager),
@@ -154,6 +170,7 @@ def request_forgot_password(
         pg_manager=pg_manager,
         auth_manager=auth_manager,
         rmq_manager=rmq_manager,
+        language=extract_locale_from_request(request)
         )
 
 

@@ -84,6 +84,7 @@ def resend_verification_code(
         pg_manager: PostgresManager, 
         auth_manager: AuthManager,
         rmq_manager: RabbitMQManager,
+        language: Optional[str] = "en"
         ) -> dict:
     """Resend verification code to user's email"""
     user_validators.validate_email_format(email)
@@ -108,7 +109,8 @@ def resend_verification_code(
     rmq_manager.publish_verify_mail_request(
             username=user.username,
             verification_code=verification_code,
-            recipient=email
+            recipient=email,
+            language=language
         )
 
     return {"detail": "A new verification code has been sent to your email."}
@@ -119,6 +121,7 @@ def send_forgot_password_verification(
         pg_manager: PostgresManager,
         auth_manager: AuthManager,
         rmq_manager: RabbitMQManager,
+        language: Optional[str] = "en"
     ) -> dict:
 
     user = user_queries.get_user_by_email(email=email, pg_manager=pg_manager)
@@ -137,7 +140,8 @@ def send_forgot_password_verification(
     rmq_manager.publish_forgot_password_verification_request(
             username=user.username,
             verification_code=verification_code,
-            recipient=email
+            recipient=email,
+            language=language
         )
 
     return {"detail": "A verification code has been sent to your email address."}
@@ -148,6 +152,7 @@ def send_email_change_verification(
         pg_manager: PostgresManager,
         auth_manager: AuthManager,
         rmq_manager: RabbitMQManager,
+        language: Optional[str] = "en"
         ) -> dict:
     """Initiate email change process by sending verification code to new email"""
 
@@ -169,7 +174,8 @@ def send_email_change_verification(
     rmq_manager.publish_email_change_verification_request(
             username=user.username,
             verification_code=verification_code,
-            recipient=new_email
+            recipient=new_email,
+            language=language
         )
 
     return {"detail": "A verification code has been sent to your new email address."}

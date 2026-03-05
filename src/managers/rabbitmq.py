@@ -1,5 +1,7 @@
 import pika, os, json, time, logging
 
+from typing import Optional
+
 from src.models import MailRequest
 
 logger = logging.getLogger(__name__)
@@ -154,40 +156,61 @@ class RabbitMQManager:
         """Publish a MailRequest to the RabbitMQ queue"""
         self._publish_message(mail_request.model_dump())
 
-    def publish_verify_mail_request(self, username: str, verification_code: str, recipient: str) -> dict[str, str]:
+    def publish_verify_mail_request(
+            self,
+            username: str,
+            verification_code: str,
+            recipient: str,
+            language: Optional[str] = "en"
+        ) -> dict[str, str]:
         """Publish an email verification request to the RabbitMQ queue"""
         logger.info(f"Publishing email verification request for user '{username}' to RabbitMQ.")
         request = MailRequest(
             template_name=TemplateName.EMAIL_VERIFICATION,
             username=username,
             verification_code=verification_code,
-            recipient=recipient
+            recipient=recipient,
+            language=language
         )
         self._publish_mail_request(request)
         return {"detail": "Verification code will be sent to user"}
     
 
-    def publish_email_change_verification_request(self, username: str, verification_code: str, recipient: str) -> dict[str, str]:
+    def publish_email_change_verification_request(
+            self,
+            username: str,
+            verification_code: str,
+            recipient: str,
+            language: Optional[str] = "en"
+        ) -> dict[str, str]:
         """Publish an email change verification request to the RabbitMQ queue"""
         logger.info(f"Publishing email change verification request for user '{username}' to RabbitMQ.")
         request = MailRequest(
             template_name=TemplateName.EMAIL_CHANGE_VERIFICATION,
             username=username,
             verification_code=verification_code,
-            recipient=recipient
+            recipient=recipient,
+            language=language
         )
         self._publish_mail_request(request)
         return {"detail": "Email change verification code will be sent to user"}
     
 
-    def publish_forgot_password_verification_request(self, username: str, verification_code: str, recipient: str) -> dict[str, str]:
+    def publish_forgot_password_verification_request(
+            self,
+            username: str,
+            verification_code: str,
+            recipient: str,
+            language: Optional[str] = "en"
+        ) -> dict[str, str]:
         """Publish a forgot password verification request to the RabbitMQ queue"""
         logger.info(f"Publishing forgot password verification request for user '{username}' to RabbitMQ.")
         request = MailRequest(
             template_name=TemplateName.FORGOT_PASSWORD_VERIFICATION,
             username=username,
             verification_code=verification_code,
-            recipient=recipient
+            recipient=recipient,
+            language=language
         )
         self._publish_mail_request(request)
         return {"detail": "Forgot password verification code will be sent to user"}
