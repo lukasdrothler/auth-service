@@ -203,7 +203,20 @@ class AuthManager:
             return Token(access_token=access_token, refresh_token=refresh_token)
         
         return Token(access_token=access_token)
-    
+
+    def get_username_by_id(self, user_id: str, pg_manager: PostgresManager) -> str:
+        """Get a username by user ID"""
+        user = user_queries.get_user_by_id(user_id=user_id, pg_manager=pg_manager)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user.username
+
+    def get_id_by_username(self, username: str, pg_manager: PostgresManager) -> str:
+        """Get a user ID by username"""
+        user = user_queries.get_user_by_username(username=username, pg_manager=pg_manager)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user.id
 
     def refresh_access_token(
             self,

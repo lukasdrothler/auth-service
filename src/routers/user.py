@@ -212,6 +212,26 @@ def get_user_ids_to_name(
     )
 
 
+@router.get("/user/{user_id}/username", tags=["user-information"])
+def get_username_by_id_endpoint(
+    user_id: str,
+    auth_manager: AuthManager = Depends(get_auth_manager),
+    pg_manager: PostgresManager = Depends(get_pg_manager),
+):
+    """Get a username by user ID"""
+    return auth_manager.get_username_by_id(user_id=user_id, pg_manager=pg_manager)
+
+
+@router.get("/user/{username}/id", tags=["user-information"])
+def get_id_by_username_endpoint(
+    username: str,
+    auth_manager: AuthManager = Depends(get_auth_manager),
+    pg_manager: PostgresManager = Depends(get_pg_manager),
+):
+    """Get a user ID by username"""
+    return auth_manager.get_id_by_username(username=username, pg_manager=pg_manager)
+
+
 @router.get("/user/all", response_model=list[UserInDBNoPassword], tags=["user-management"])
 def get_users_all(
     current_admin: CurrentAdminUser,

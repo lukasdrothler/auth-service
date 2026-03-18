@@ -303,3 +303,30 @@ def test_create_verification_code_for_user(auth_manager, pg_manager):
     # Verify in DB
     stored_code = verification_code_queries.get_verification_code_by_user_id(user.id, pg_manager)
     assert stored_code.value == new_code
+
+def test_get_username_and_id(auth_manager, pg_manager):
+    user_data = CreateUser(
+        username="lookupuser",
+        email="lookup@example.com",
+        password="TestPassword123"
+    )
+    auth_manager.register_new_user(user_data, pg_manager)
+    user = auth_manager.authenticate_user("lookupuser", "TestPassword123", pg_manager)
+
+    # Test get_username_by_id
+    username = auth_manager.get_username_by_id(user.id, pg_manager)
+    assert username == "lookupuser"
+
+    # Test get_id_by_username
+    user_id = auth_manager.get_id_by_username("lookupuser", pg_manager)
+    assert user_id == user.id
+
+    # Test non-existent user id
+    with pytest.raises(HTTPException) as exc:
+        auth_manager.get_username_by_id("nonexistent_id", pg_manager)
+    assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+    # Test non-existent username
+    with pytest.raises(HTTPException) as exc:
+        auth_manager.get_id_by_username("nonexistent_username", pg_manager)
+    assert exc.value.status_code == status.HTTP_404_NOT_FOUND
