@@ -1,12 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from src.managers.postgres import PostgresManager
 from src.dependencies import get_pg_manager
-from src.models import UserInDBNoPassword, UpdateUserPremiumLevel
+from src.models import UserInDBNoPassword, UpdateUserPremiumLevel, ErrorDetail
 from src import user_queries
 
 router = APIRouter()
 
-@router.get("/internal/user", response_model=UserInDBNoPassword, tags=["internal"])
+@router.get(
+    "/internal/user",
+    response_model=UserInDBNoPassword,
+    tags=["internal"],
+    responses={
+        200: {"description": "User found and returned"},
+        400: {"model": ErrorDetail, "description": "Neither user_id nor stripe_customer_id provided"},
+        404: {"model": ErrorDetail, "description": "User not found or IDs do not match"},
+    },
+)
 def get_user_internal(
     user_id: str = None,
     stripe_customer_id: str = None,
@@ -30,7 +39,15 @@ def get_user_internal(
     return UserInDBNoPassword(**user.model_dump(exclude={"password"}))
 
 
-@router.put("/internal/users/{user_id}/premium", response_model=dict, tags=["internal"])
+@router.put(
+    "/internal/users/{user_id}/premium",
+    response_model=dict,
+    tags=["internal"],
+    responses={
+        200: {"description": "Premium level updated successfully"},
+        404: {"model": ErrorDetail, "description": "User not found"},
+    },
+)
 def update_user_premium_level_internal(
     user_id: str,
     update_data: UpdateUserPremiumLevel,

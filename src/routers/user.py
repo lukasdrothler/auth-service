@@ -17,7 +17,8 @@ from src.models import (
  UpdatePassword,
  VerifyEmailRequest,
  UpdateForgottenPassword,
- UserInDBNoPassword
+ UserInDBNoPassword,
+ ErrorDetail,
 )
 
 from src.dependencies import (
@@ -39,12 +40,29 @@ def extract_locale_from_request(request: Request) -> str:
         return languages[0]
     return "en"
 
-@router.get("/user/me", response_model=User, tags=["user-information"])
+@router.get(
+    "/user/me",
+    response_model=User,
+    tags=["user-information"],
+    responses={
+        401: {"model": ErrorDetail, "description": "Missing or invalid authentication token"},
+        400: {"model": ErrorDetail, "description": "User account is disabled"},
+    },
+)
 def read_users_me(current_user: CurrentActiveUser):
     return current_user
 
 
-@router.post("/user/register", status_code=201, tags=["user-registration"])
+@router.post(
+    "/user/register",
+    status_code=201,
+    tags=["user-registration"],
+    responses={
+        201: {"description": "User registered successfully, verification e-mail queued"},
+        400: {"model": ErrorDetail, "description": "Invalid username, e-mail format or password strength"},
+        409: {"model": ErrorDetail, "description": "Username or e-mail already taken"},
+    },
+)
 def create_new_user(
     user: CreateUser,
     request: Request,
@@ -65,7 +83,16 @@ def create_new_user(
 
 
 
-@router.post("/user/verify-email", status_code=200, tags=["user-registration"])
+@router.post(
+    "/user/verify-email",
+    status_code=200,
+    tags=["user-registration"],
+    responses={
+        200: {"description": "E-Mail verified successfully"},
+        400: {"model": ErrorDetail, "description": "No verification code found, invalid code, expired code, or code already used"},
+        404: {"model": ErrorDetail, "description": "User not found for the given e-mail"},
+    },
+)
 def verify_user_email(
     verify_request: VerifyEmailRequest,
     pg_manager: PostgresManager = Depends(get_pg_manager),
@@ -76,7 +103,17 @@ def verify_user_email(
         )
     
 
-@router.post("/user/resend-verification", status_code=200, tags=["user-registration"])
+@router.post(
+    "/user/resend-verification",
+    status_code=200,
+    tags=["user-registration"],
+    responses={
+        200: {"description": "New verification code sent"},
+        400: {"model": ErrorDetail, "description": "Invalid e-mail format or e-mail is already verified"},
+        404: {"model": ErrorDetail, "description": "User with the given e-mail not found"},
+        429: {"model": ErrorDetail, "description": "Too many requests – please wait 30 seconds before retrying"},
+    },
+)
 def send_new_verification_code(
     send_verification_request: SendVerificationRequest,
     request: Request,
@@ -93,7 +130,19 @@ def send_new_verification_code(
     )
 
 
-@router.put("/user/me", status_code=200, tags=["user-information"])
+@router.put(
+    "/user/me",
+    status_code=200,
+    tags=["user-information"],
+    responses={
+        200: {"description": "User information updated successfully or no changes made"},
+        400: {"model": ErrorDetail, "description": "Invalid username format, user account disabled"},
+        401: {"model": ErrorDetail, "description": "Missing or invalid authentication token"},
+        404: {"model": ErrorDetail, "description": "User not found"},
+        409: {"model": ErrorDetail, "description": "Username already taken"},
+        500: {"model": ErrorDetail, "description": "Unexpected server error while saving changes"},
+    },
+)
 def update_user_info(
     user_update: UpdateUser,
     current_user: CurrentActiveUser,
@@ -108,7 +157,18 @@ def update_user_info(
         )
 
 
-@router.put("/user/me/password", status_code=200, tags=["user-information"])
+@router.put(
+    "/user/me/password",
+    status_code=200,
+    tags=["user-information"],
+    responses={
+        200: {"description": "Password updated successfully"},
+        400: {"model": ErrorDetail, "description": "Current password incorrect, weak new password, or user account disabled"},
+        401: {"model": ErrorDetail, "description": "Missing or invalid authentication token"},
+        404: {"model": ErrorDetail, "description": "User not found"},
+        500: {"model": ErrorDetail, "description": "Unexpected server error while saving the new password"},
+    },
+)
 def change_user_password(
     password_update: UpdatePassword,
     current_user: CurrentActiveUser,
@@ -123,7 +183,18 @@ def change_user_password(
         )
 
 
-@router.post("/user/me/email/change", status_code=200, tags=["user-information"])
+@router.post(
+    "/user/me/email/change",
+    status_code=200,
+    tags=["user-information"],
+    responses={
+        200: {"description": "Verification code sent to the new e-mail address"},
+        400: {"model": ErrorDetail, "description": "New e-mail is the same as current, invalid format, or user account disabled"},
+        401: {"model": ErrorDetail, "description": "Missing or invalid authentication token"},
+        409: {"model": ErrorDetail, "description": "New e-mail is already registered"},
+        429: {"model": ErrorDetail, "description": "Too many requests – please wait 30 seconds before retrying"},
+    },
+)
 def request_user_email_change(
     send_verification_request: SendVerificationRequest,
     current_user: CurrentActiveUser,
@@ -143,7 +214,17 @@ def request_user_email_change(
     )
 
 
-@router.post("/user/me/email/verify", status_code=200, tags=["user-information"])
+@router.post(
+    "/user/me/email/verify",
+    status_code=200,
+    tags=["user-information"],
+    responses={
+        200: {"description": "E-Mail address updated successfully"},
+        400: {"model": ErrorDetail, "description": "Invalid e-mail format, no verification code found, invalid/expired/already-used code, or user account disabled"},
+        401: {"model": ErrorDetail, "description": "Missing or invalid authentication token"},
+        409: {"model": ErrorDetail, "description": "New e-mail is already registered"},
+    },
+)
 def user_email_change_verification(
     verify_request: VerifyEmailRequest,
     current_user: CurrentActiveUser,
@@ -157,7 +238,16 @@ def user_email_change_verification(
         )
 
 
-@router.post("/user/forgot-password/request", status_code=200, tags=["user-password-recovery"])
+@router.post(
+    "/user/forgot-password/request",
+    status_code=200,
+    tags=["user-password-recovery"],
+    responses={
+        200: {"description": "Verification code sent to the registered e-mail address"},
+        404: {"model": ErrorDetail, "description": "User with the given e-mail not found"},
+        429: {"model": ErrorDetail, "description": "Too many requests – please wait 30 seconds before retrying"},
+    },
+)
 def request_forgot_password(
     send_verification_request: SendVerificationRequest,
     request: Request,
@@ -174,7 +264,16 @@ def request_forgot_password(
         )
 
 
-@router.post("/user/forgot-password/verify", status_code=200, tags=["user-password-recovery"])
+@router.post(
+    "/user/forgot-password/verify",
+    status_code=200,
+    tags=["user-password-recovery"],
+    responses={
+        200: {"description": "E-Mail verified; client may now submit a new password"},
+        400: {"model": ErrorDetail, "description": "No verification code found, invalid/expired/already-used code"},
+        404: {"model": ErrorDetail, "description": "User with the given e-mail not found"},
+    },
+)
 def forgot_password_verification(
     verify_request: VerifyEmailRequest,
     pg_manager: PostgresManager = Depends(get_pg_manager),
@@ -186,7 +285,17 @@ def forgot_password_verification(
         )
 
 
-@router.post("/user/forgot-password/change", status_code=200, tags=["user-password-recovery"])
+@router.post(
+    "/user/forgot-password/change",
+    status_code=200,
+    tags=["user-password-recovery"],
+    responses={
+        200: {"description": "Password reset successfully"},
+        400: {"model": ErrorDetail, "description": "No verification code found, invalid/expired/already-used code, or weak new password"},
+        404: {"model": ErrorDetail, "description": "User with the given e-mail not found"},
+        500: {"model": ErrorDetail, "description": "Unexpected server error while saving the new password"},
+    },
+)
 def change_forgotten_password(
     update_forgotten_password: UpdateForgottenPassword,
     auth_manager: AuthManager = Depends(get_auth_manager),
@@ -200,7 +309,14 @@ def change_forgotten_password(
         )
 
 
-@router.post("/user/id-to-name-map", response_model=dict, tags=["user-information"])
+@router.post(
+    "/user/id-to-name-map",
+    response_model=dict,
+    tags=["user-information"],
+    responses={
+        200: {"description": "Map of user IDs to usernames (unknown IDs are omitted)"},
+    },
+)
 def get_user_ids_to_name(
     user_ids: list[str],
     pg_manager: PostgresManager = Depends(get_pg_manager),
@@ -212,7 +328,14 @@ def get_user_ids_to_name(
     )
 
 
-@router.get("/user/{user_id}/username", tags=["user-information"])
+@router.get(
+    "/user/{user_id}/username",
+    tags=["user-information"],
+    responses={
+        200: {"description": "Username for the given user ID"},
+        404: {"model": ErrorDetail, "description": "User not found"},
+    },
+)
 def get_username_by_id_endpoint(
     user_id: str,
     auth_manager: AuthManager = Depends(get_auth_manager),
@@ -222,7 +345,14 @@ def get_username_by_id_endpoint(
     return auth_manager.get_username_by_id(user_id=user_id, pg_manager=pg_manager)
 
 
-@router.get("/user/{username}/id", tags=["user-information"])
+@router.get(
+    "/user/{username}/id",
+    tags=["user-information"],
+    responses={
+        200: {"description": "User ID for the given username"},
+        404: {"model": ErrorDetail, "description": "User not found"},
+    },
+)
 def get_id_by_username_endpoint(
     username: str,
     auth_manager: AuthManager = Depends(get_auth_manager),
@@ -232,7 +362,16 @@ def get_id_by_username_endpoint(
     return auth_manager.get_id_by_username(username=username, pg_manager=pg_manager)
 
 
-@router.get("/user/all", response_model=list[UserInDBNoPassword], tags=["user-management"])
+@router.get(
+    "/user/all",
+    response_model=list[UserInDBNoPassword],
+    tags=["user-management"],
+    responses={
+        200: {"description": "List of all users"},
+        401: {"model": ErrorDetail, "description": "Missing or invalid authentication token"},
+        403: {"model": ErrorDetail, "description": "Admin privileges required"},
+    },
+)
 def get_users_all(
     current_admin: CurrentAdminUser,
     pg_manager: PostgresManager = Depends(get_pg_manager),
@@ -243,7 +382,17 @@ def get_users_all(
     return user_queries.get_all_users(pg_manager=pg_manager)
 
 
-@router.delete("/user/{user_id}", status_code=200, tags=["user-management"])
+@router.delete(
+    "/user/{user_id}",
+    status_code=200,
+    tags=["user-management"],
+    responses={
+        200: {"description": "User deleted successfully"},
+        401: {"model": ErrorDetail, "description": "Missing or invalid authentication token"},
+        403: {"model": ErrorDetail, "description": "Admin privileges required"},
+        404: {"model": ErrorDetail, "description": "User not found"},
+    },
+)
 def delete_user_by_id(
     current_admin: CurrentAdminUser,
     user_id: str,
