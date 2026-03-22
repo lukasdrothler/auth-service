@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from src.managers.postgres import PostgresManager
 from src.dependencies import get_pg_manager
-from src.models import UserInDBNoPassword, UpdateUserPremiumLevel, ErrorDetail
+from src.models import UserInDBNoPassword, UpdateUserPremiumLevel, DetailResponse, ErrorDetail
 from src import user_queries
 
 router = APIRouter()
@@ -41,7 +41,7 @@ def get_user_internal(
 
 @router.put(
     "/internal/users/{user_id}/premium",
-    response_model=dict,
+    response_model=DetailResponse,
     tags=["internal"],
     responses={
         200: {"description": "Premium level updated successfully"},

@@ -6,7 +6,7 @@ from typing import Annotated
 from src.dependencies import get_auth_manager, get_pg_manager
 from src.managers.auth import AuthManager
 from src.managers.postgres import PostgresManager
-from src.models import Token, RefreshTokenRequest, ErrorDetail
+from src.models import Token, RefreshTokenRequest, DetailResponse, ErrorDetail
 
 router = APIRouter()
 

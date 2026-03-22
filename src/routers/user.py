@@ -18,6 +18,7 @@ from src.models import (
  VerifyEmailRequest,
  UpdateForgottenPassword,
  UserInDBNoPassword,
+ DetailResponse,
  ErrorDetail,
 )
 
@@ -56,6 +57,7 @@ def read_users_me(current_user: CurrentActiveUser):
 @router.post(
     "/user/register",
     status_code=201,
+    response_model=DetailResponse,
     tags=["user-registration"],
     responses={
         201: {"description": "User registered successfully, verification e-mail queued"},
@@ -86,6 +88,7 @@ def create_new_user(
 @router.post(
     "/user/verify-email",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-registration"],
     responses={
         200: {"description": "E-Mail verified successfully"},
@@ -106,6 +109,7 @@ def verify_user_email(
 @router.post(
     "/user/resend-verification",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-registration"],
     responses={
         200: {"description": "New verification code sent"},
@@ -133,6 +137,7 @@ def send_new_verification_code(
 @router.put(
     "/user/me",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-information"],
     responses={
         200: {"description": "User information updated successfully or no changes made"},
@@ -160,6 +165,7 @@ def update_user_info(
 @router.put(
     "/user/me/password",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-information"],
     responses={
         200: {"description": "Password updated successfully"},
@@ -186,6 +192,7 @@ def change_user_password(
 @router.post(
     "/user/me/email/change",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-information"],
     responses={
         200: {"description": "Verification code sent to the new e-mail address"},
@@ -217,6 +224,7 @@ def request_user_email_change(
 @router.post(
     "/user/me/email/verify",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-information"],
     responses={
         200: {"description": "E-Mail address updated successfully"},
@@ -241,6 +249,7 @@ def user_email_change_verification(
 @router.post(
     "/user/forgot-password/request",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-password-recovery"],
     responses={
         200: {"description": "Verification code sent to the registered e-mail address"},
@@ -267,6 +276,7 @@ def request_forgot_password(
 @router.post(
     "/user/forgot-password/verify",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-password-recovery"],
     responses={
         200: {"description": "E-Mail verified; client may now submit a new password"},
@@ -288,6 +298,7 @@ def forgot_password_verification(
 @router.post(
     "/user/forgot-password/change",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-password-recovery"],
     responses={
         200: {"description": "Password reset successfully"},
@@ -385,6 +396,7 @@ def get_users_all(
 @router.delete(
     "/user/{user_id}",
     status_code=200,
+    response_model=DetailResponse,
     tags=["user-management"],
     responses={
         200: {"description": "User deleted successfully"},

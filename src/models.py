@@ -3,6 +3,10 @@ from typing import Optional
 from datetime import datetime
 
 
+class DetailResponse(BaseModel):
+    detail: str
+
+
 class ErrorDetail(BaseModel):
     detail: str
 
