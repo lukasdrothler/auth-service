@@ -40,10 +40,13 @@ def validate_password_strength(password: str) -> None:
         )
 
 
-def validate_username_unique(username: str, pg_manager: PostgresManager) -> None:
+def validate_username_unique(username: str, pg_manager: PostgresManager, current_user_id: Optional[str] = None) -> None:
     """Validate that username is unique (excluding current user if updating)"""
     existing_user = user_queries.get_user_by_username(username, pg_manager)
     if existing_user:
+        # Allow the current user to change only the case of their own username
+        if current_user_id is not None and existing_user.id == current_user_id:
+            return
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username is already taken.",
@@ -70,11 +73,11 @@ def validate_new_user(user: CreateUser, pg_manager: PostgresManager) -> None:
     validate_email_unique(user.email, pg_manager)
 
 
-def validate_user_update(user_update: UpdateUser, pg_manager: PostgresManager) -> None:
+def validate_user_update(user_update: UpdateUser, pg_manager: PostgresManager, current_user_id: Optional[str] = None) -> None:
     """Validate fields for user update"""
     if user_update.username is not None:
         validate_username_format(user_update.username)
-        validate_username_unique(user_update.username, pg_manager)
+        validate_username_unique(user_update.username, pg_manager, current_user_id=current_user_id)
 
 
 def validate_new_password(

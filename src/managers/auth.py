@@ -397,7 +397,7 @@ class AuthManager:
                 detail="User not found"
             )
 
-        user_validators.validate_user_update(user_update, pg_manager)
+        user_validators.validate_user_update(user_update, pg_manager, current_user_id=user_id)
         fields_updated = user_queries.update_user_fields(user_id, user_update, pg_manager=pg_manager)
         
         if not fields_updated:

@@ -104,6 +104,43 @@ def test_validate_user_update(pg_manager):
         user_validators.validate_user_update(update_conflict, pg_manager)
     assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 
+
+def test_validate_username_unique_case_change_allowed(pg_manager):
+    """Owner can change the case of their own username (e.g. lukas -> Lukas)"""
+    user_queries.create_user("caseuser", "caseuser@example.com", "hashed_pw", pg_manager)
+    existing = user_queries.get_user_by_username("caseuser", pg_manager)
+
+    # Same user changing only case — should not raise
+    user_validators.validate_username_unique("Caseuser", pg_manager, current_user_id=existing.id)
+
+
+def test_validate_username_unique_case_conflict_blocked(pg_manager):
+    """Another user cannot take a username that differs only in case"""
+    user_queries.create_user("takenuser", "takenuser@example.com", "hashed_pw", pg_manager)
+    user_queries.create_user("otheruser", "otheruser@example.com", "hashed_pw", pg_manager)
+    other = user_queries.get_user_by_username("otheruser", pg_manager)
+
+    with pytest.raises(HTTPException) as exc_info:
+        user_validators.validate_username_unique("Takenuser", pg_manager, current_user_id=other.id)
+    assert exc_info.value.status_code == status.HTTP_409_CONFLICT
+
+
+def test_validate_user_update_case_change(pg_manager):
+    """validate_user_update allows owner to change username case via current_user_id"""
+    user_queries.create_user("myuser", "myuser@example.com", "hashed_pw", pg_manager)
+    existing = user_queries.get_user_by_username("myuser", pg_manager)
+
+    # Owner changes case — should not raise
+    update = UpdateUser(username="MyUser")
+    user_validators.validate_user_update(update, pg_manager, current_user_id=existing.id)
+
+    # Another user tries to take the same name — should raise
+    user_queries.create_user("intruder", "intruder@example.com", "hashed_pw", pg_manager)
+    intruder = user_queries.get_user_by_username("intruder", pg_manager)
+    with pytest.raises(HTTPException) as exc_info:
+        user_validators.validate_user_update(update, pg_manager, current_user_id=intruder.id)
+    assert exc_info.value.status_code == status.HTTP_409_CONFLICT
+
 def test_validate_new_password(auth_manager):
     password_hash = auth_manager.password_hash
     current_password = "OldPassword123"
